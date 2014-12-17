@@ -20,9 +20,14 @@
 function [events, stages, epochLength, annotation] = readXML(xmlfile)
 try
     xdoc = xmlread(xmlfile);
+    % parse Nodes
+    % validate Nodes
 catch
     error('Failed to read XML file %s.', xmlfile);
 end
+
+% format nodes for display
+
 [events, stages, epochLength, annotation] = parseNodes(xdoc);
 
 function [eventsVector, stages, epochLength, annotation] = parseNodes(xmldoc)
@@ -32,7 +37,7 @@ epoch = xmldoc.getElementsByTagName('EpochLength');
 epochLength = str2double(epoch.item(0).getTextContent);
 
 events = xmldoc.getElementsByTagName('ScoredEvent');
-sofwareElement = xmldoc.getElementsByTagName('SoftwareVersion').item(0);
+% sofwareElement = xmldoc.getElementsByTagName('SoftwareVersion').item(0);
 
 if events.getLength > 0
     annotation = 1;
@@ -44,47 +49,44 @@ if events.getLength > 0
 % PSGAnnotation:
 % << wei wang, 2014-9-16,
 root_name = xmldoc.getElementsByTagName('PSGAnnotation');
-if ~isempty(root_name)
-    fid = fopen('sro-events.csv');
-    format = '%s ';
-    out = textscan(fid, format,'delimiter', ', ');
-    stagesConcept = out{1};
-    fclose(fid);
-end
-% >>
-    
+stagesNameVector = readSROevents();
+
+% >>    
     for i = 0: numEvents-1 % events.item(i): ScoredEvent
-        if events.item(i).getElementsByTagName('EventConcept').getLength >0
+        if events.item(i).getElementsByTagName('EventConcept').getLength > 0
             name = char(events.item(i).getElementsByTagName('EventConcept').item(0).getTextContent);
             starttime = str2num(events.item(i).getElementsByTagName('Start').item(0).getTextContent);
             duration  = str2num(events.item(i).getElementsByTagName('Duration').item(0).getTextContent);
             baseline = 0;
             nadir = 0;
-            text = char('');
-%             disp(name);
-            if events.item(i).getElementsByTagName('Desaturation').getLength>0
-                baseline = str2num(events.item(i).getElementsByTagName('Desaturation').item(0).getTextContent);
+            if events.item(i).getElementsByTagName('SpO2Baseline').getLength>0
+                baseline = ...
+                    str2num(events.item(i).getElementsByTagName('SpO2Baseline').item(0).getTextContent);
             end
             if events.item(i).getElementsByTagName('SpO2Nadir').getLength > 0
-                nadir = str2num(events.item(i).getElementsByTagName('SpO2Nadir').item(0).getTextContent);
+                nadir = ...
+                    str2num(events.item(i).getElementsByTagName('SpO2Nadir').item(0).getTextContent);
             end
-            if events.item(i).getElementsByTagName('Text').getLength > 0
-                text = char(events.item(i).getElementsByTagName('Text').item(0).getTextContent);
-            end
-            eventStruct = struct('EventConcept', name, 'Start', starttime, 'Duration', duration, 'Desaturation', baseline, 'SpO2Nadir', nadir, 'Text', text);
+            eventStruct = struct( ...
+                'EventConcept', name, ...
+                'Start', starttime, ...
+                'Duration', duration, ...
+                'SpO2Baseline', baseline, ...
+                'SpO2Nadir', nadir ...
+            );
             
-            % if ~isempty(strfind(stagesConcept,name))
-            if strcmp(stagesConcept{1},name)==1
+            % if ~isempty(strfind(stagesNameVector,name))
+            if strcmp(stagesNameVector{1},name)==1
                 stages = [stages, ones(1,duration)+3];
-            elseif strcmp(stagesConcept{2},name)==1
+            elseif strcmp(stagesNameVector{2},name)==1
                 stages = [stages, ones(1,duration)+2];
-            elseif strcmp(stagesConcept{3},name)==1
+            elseif strcmp(stagesNameVector{3},name)==1
                 stages = [stages, ones(1,duration)+1];
-            elseif strcmp(stagesConcept{4},name)==1
+            elseif strcmp(stagesNameVector{4},name)==1
                 stages = [stages, ones(1,duration)];
-            elseif strcmp(stagesConcept{5},name)==1
+            elseif strcmp(stagesNameVector{5},name)==1
                 stages = [stages, zeros(1,duration)];
-            elseif strcmp(stagesConcept{6},name)==1
+            elseif strcmp(stagesNameVector{6},name)==1
                 stages = [stages, zeros(1,duration)+5];
                 % end
             else

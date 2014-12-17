@@ -46,7 +46,6 @@ gui_State = struct('gui_Name',       mfilename, ...
 % End initialization code - DO NOT EDIT
 
 
-
 %------------------------------------------------------ EDF_View_OpeningFcn
 % --- Executes just before EDF_View is made visible.
 function EDF_View_OpeningFcn(hObject, eventdata, handles, varargin)
@@ -136,6 +135,7 @@ set(handles.pbGoToEnd,'CData',g);
 handles.EDF_LOADED = 0;
 handles.XML_LOADED = 0;
 handles.FlagAnn = 0;
+handles.EDF_CHECK = 0; %%% TODO
 %--------------------------------------------------------------------------
 
 
@@ -210,7 +210,6 @@ handles.openStartFolder = [handles.openStartFolder, handles.fileSeperator];
 guidata(hObject, handles);
 % UIWAIT makes EDF_View wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
- 
 
 
 %------------------------------------------------------- EDF_View_OutputFcn
@@ -225,7 +224,6 @@ function varargout = EDF_View_OutputFcn(hObject, eventdata, handles)
 varargout{1} = handles.output;
 
 
-
 % ---------------------------------------------------- MenuOpenEDF_Callback
 function MenuOpenEDF_Callback(hObject, eventdata, handles)
 % hObject    handle to MenuOpen (see GCBO)
@@ -236,6 +234,38 @@ function MenuOpenEDF_Callback(hObject, eventdata, handles)
 openStartFolder = handles.openStartFolder;
 fileSpec = strcat(openStartFolder,'*.edf');
 [FileName, FilePath]=uigetfile(fileSpec,'Open EDF File');
+% InterfaceObj = findobj(gcf, 'Enable', 'on');
+
+try
+    belClass = BlockEdfLoadClass([FilePath FileName]);
+    belClass = belClass.blockEdfLoad; 
+    belClass = belClass.CheckEdf;
+    fprintf('Checking: %s\n', [FilePath FileName]);
+    ErrMsg = '';
+    % belClass.DispCheck % Access checking information you want to look at lines 321-327 on BlockEdfLoadClass
+    if ~isempty(belClass.errMsg) && belClass.mostSeriousErrValue <= 4
+        belClass.DispCheck 
+        ErrMsg = belClass.errSummary;
+        for i=1:length(belClass.errList)            
+            ErrMsg = [ErrMsg, belClass.errList(i)];
+        end  
+        errordlg(ErrMsg, 'Errors', 'modal');
+    end
+    if belClass.mostSeriousErrValue > 4
+        ErrMsg = 'Fatal Error: Cannot load';  
+        errordlg(ErrMsg, 'Fatal Errors', 'modal');
+        % EDF check failed
+        handles.EDF_CHECK = 0;
+        return
+    else
+        handles.EDF_CHECK = 1;
+    end
+    fprintf('Checking passed.\n')
+catch exception
+    errMsg = sprintf('Could not load: %s\nFile cannot be read', [FilePath FileName]);
+    errordlg(errMsg, 'Fatal Error', 'modal'); %%% TODO: Use errordlg(message, 'XML errors') instead    
+    return;
+end
 
 if ~(length(FilePath)==1)
     % Store file name
@@ -246,11 +276,13 @@ if ~(length(FilePath)==1)
     set(handles.MenuOpenXML,'enable','on');
     set(handles.MenuChSelection,'enable','on');
     set(handles.MenuFilter,'enable','on');
-    
+
     set(handles.figure1,'pointer', 'watch');
 
-    %[Original] Temp = EdfInfo(handles.FileName);
+    %[Original] Temp = EdfInfo(handles.FileName); read file info and
+    %channel info
     tempEdfHandles = EdfInfo(handles.FileName);
+%      tempEdfHandles = EdfLoad(handles.FileName);
 
     %[Original] handles.FileInfo   = Temp.FileInfo;
     %[Original] handles.ChInfo     = Temp.ChInfo;
@@ -301,7 +333,7 @@ if ~(length(FilePath)==1)
     
     %[Original] Temp = []; Temp => EdfTextHeader;need comment TODO, go back
     % Header in an array, EdfHeaderDescriptionArray
-    EdfHeaderDescriptionArray=[];
+    EdfHeaderDescriptionArray = [];
     
     %%% change variable 'TempText' to reflect the meaning
     TempText = handles.FileInfo.LocalPatientID;
@@ -327,14 +359,14 @@ if ~(length(FilePath)==1)
         Counter = Counter + 1;
         Temp1 = handles.ChInfo.Labels(i,:);
         if ~isempty(Temp1)
-            while Temp1(end)==32 && length(Temp1) > 1  % changed from '&' to '&&'
+            while Temp1(end)==32 & length(Temp1) > 1
                 Temp1(end)=[];
             end
         end
         
         Temp2 = handles.ChInfo.PhyDim(i,:);
         if ~isempty(Temp2)
-            while Temp2(end)==32 && length(Temp2) > 1 % changed from '&' to '&&'
+            while Temp2(end)==32 & length(Temp2) > 1
                 Temp2(end)=[];
             end
         end
@@ -394,7 +426,6 @@ if ~(length(FilePath)==1)
     % Let user know load has been completed
     set(handles.figure1,'pointer', 'arrow');
 end
-
 
 
 %--------------------------------------------- CreateListBoxEdfHeaderString
@@ -496,7 +527,6 @@ function EdfHeaderString = CreateListBoxEdfHeaderString ...
 EdfHeaderString = EdfTextHeader;
 
 
-
 %----------------------------------------------- PopMenuWindowTime_Callback
 % --- Executes on selection change in PopMenuWindowTime.
 function PopMenuWindowTime_Callback(hObject, eventdata, handles)
@@ -507,6 +537,10 @@ function PopMenuWindowTime_Callback(hObject, eventdata, handles)
 % Hints: contents = cellstr(get(hObject,'String')) returns PopMenuWindowTime contents as cell array
 %        contents{get(hObject,'Value')} returns selected item from PopMenuWindowTime
 
+% if EDF file check failed, then return
+if handles.EDF_CHECK == 0 
+    return
+end
 
 % Get menu entry
 popup_id = get(handles.PopMenuWindowTime,'value'); %TODO popup_id => PopMenuWindowTime_value
@@ -538,6 +572,10 @@ function SliderTime_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'Value') returns position of slider
 %        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
 
+% if EDF file check failed, then return
+if handles.EDF_CHECK == 0 
+    return
+end
 
 % Get slider value
 sliderValue = round(get(hObject,'value'));
@@ -564,9 +602,8 @@ handles = UpDatePlot(hObject,handles);
 guidata(hObject, handles);
 
 
-
 %----------------------------------------------------------------- DataLoad
-function handles=DataLoad(handles)
+function handles = DataLoad(handles)
 % DataLoad rewritten to access data loaded with block load.
 
 % Access epoch
@@ -624,7 +661,6 @@ for i=1:size(SelectedCh,1)
 end
 
 
-
 function handles = DataNormalize(handles)
 
 for i=1:length(handles.Data)
@@ -637,15 +673,12 @@ for i=1:length(handles.Data)
 end
 
 
-
 %--------------------------------------------------------------- UpDatePlot
 function handles = UpDatePlot(hObject, handles)
-% TODO LATER
-hasSleepStages = 0;
+hasSleepStages = 0; % TODO
 % set the epoch number
 % each epoch has been considered as 30 sec
 % get  current epoch length
-
 % Set epcoh values based on slider time
 SliderTime = get(handles.SliderTime, 'value');
 epochTime30Sec = fix(SliderTime / 30) + 1;
@@ -664,15 +697,10 @@ set(handles.textCurrent30secEpochs, 'String', epochsString);
 
 % Plot the data
 axes(handles.axes1);
-% c_axes = evalin('base','c_axes');
 c_axes = handles.c_axes;
 
 % not sure why this is need, throws an exception when clicking on the 
 % histogram
-% if ~isempty(c_axes)
-%     c_axes
-%     delete(c_axes)
-% end
 cla
 hold on
 
@@ -686,7 +714,7 @@ SelectedCh = handles.SelectedCh;
 %[Original] SelectedChMap = [];
 SelectedChMap = cell(length(SelectedCh), 1);
 for i=1:size(SelectedCh,1)
-    if SelectedCh(i,2)==0
+    if SelectedCh(i,2) == 0
         SelectedChMap{i,1} = handles.ChInfo.Labels(SelectedCh(i,1),:);
     else
         SelectedChMap{i,1} = [handles.ChInfo.Labels(SelectedCh(i,1),:) '-' handles.ChInfo.Labels(SelectedCh(i,2),:)];
@@ -716,16 +744,13 @@ if handles.FlagAnn
     
     CurrentTime = get(handles.SliderTime,'value');
         
-    if ~handles.PlotType
-        
-        % Annotation plot
-        
+    if ~handles.PlotType        
+        % Annotation plot        
         % Forward Plot
         Index = find(Start > CurrentTime & ...
             Start < (CurrentTime + WindowTime));
         
-        if ~isempty(Index)
-            
+        if ~isempty(Index)            
             ChNum=3;
             %[Original] Start =[];
             Start = [];
@@ -774,8 +799,7 @@ if handles.FlagAnn
         end
         
         
-        Start = Start(IndexReverse) - CurrentTime;
-        
+        Start = Start(IndexReverse) - CurrentTime;        
         if ~isempty(IndexReverse)
             
             ChNum = [];
@@ -795,12 +819,8 @@ if handles.FlagAnn
                     ,'Color',[1 1 1]);
                 text(0,-ChNum(i)-0.65+2,handles.ScoredEvent(IndexReverse(i)).EventConcept,'FontWeight','bold','FontSize',9)
             end
-        end
-                
-        
-    else
-        
-        
+        end                        
+    else                
         % Forward Plot
         Index = find(Start>CurrentTime & ...
             Start < (CurrentTime+WindowTime));
@@ -826,28 +846,18 @@ if handles.FlagAnn
                 
                 if ~isempty(ChNum)
                     ChNum = ChNum(end);
-%                     fill([Start(i)  Temp Temp Start(i)], ...
-%                         [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 ]+2 ...
-%                         ,[190 222 205]/255);
                     fill([Start(i)  Temp Temp Start(i)], ...
                         [-ChNum-3/2 -ChNum-3/2 -ChNum-1/2 -ChNum-1/2 ]+2 ...
                         ,[190 222 205]/255);
                     
-%                     plot([Start(i)  Temp Temp Start(i) Start(i)], ...
-%                         [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 -ChNum(i)-3/2]+2 ...
-%                         ,'Color',[1 1 1]);
                     plot([Start(i)  Temp Temp Start(i) Start(i)], ...
                         [-ChNum-3/2 -ChNum-3/2 -ChNum-1/2 -ChNum-1/2 -ChNum-3/2]+2 ...
                         ,'Color',[1 1 1]);
-                    
-%                     text(Start(i),-ChNum(i)-0.65+2,handles.ScoredEvent(Index(i)).EventConcept,'FontWeight','bold','FontSize',9);
+
                     text(Start(i),-ChNum-0.65+2,handles.ScoredEvent(Index(i)).EventConcept,'FontWeight','bold','FontSize',9)
                 end
-            end
-            
-            
+            end                        
         end
-        
         
         % Reverse Plot
         %[Original] Temp = []; Temp => EndTime
@@ -860,7 +870,6 @@ if handles.FlagAnn
         end
         IndexReverse = find((EndTime)>=CurrentTime & EndTime <= (CurrentTime+WindowTime));
         IndexReverse = [IndexReverse find(Start<=CurrentTime & EndTime >= (CurrentTime+WindowTime) )];
-        
         
         for i=1:length(Index)
             IndexReverse(IndexReverse==Index(i))=[];
@@ -888,23 +897,15 @@ if handles.FlagAnn
                 end
                 
                 if ~isempty(ChNum)
-    %                 fill([0  Temp Temp 0], ...
-    %                     [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 ]+2 ...
-    %                     ,[190 222 205]/255);
                     fill([0  Temp Temp 0], ...
                         [-ChNum-3/2 -ChNum-3/2 -ChNum-1/2 -ChNum-1/2 ]+2 ...
                         ,[190 222 205]/255);
 
-    %                 plot([0  Temp Temp 0 0], ...
-    %                     [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 -ChNum(i)-3/2]+2 ...
-    %                     ,'Color',[1 1 1]);
                     plot([0  Temp Temp 0 0], ...
                         [-ChNum-3/2 -ChNum-3/2 -ChNum-1/2 -ChNum-1/2 -ChNum-3/2]+2 ...
                         ,'Color',[1 1 1]);                
 
-    %                 text(0,-ChNum(i)-0.65+2,handles.ScoredEvent(IndexReverse(i)).EventConcept,'FontWeight','bold','FontSize',9);
                     text(0,-ChNum-0.65+2,handles.ScoredEvent(IndexReverse(i)).EventConcept,'FontWeight','bold','FontSize',9);
-                
                 end
             end  
         end
@@ -1078,12 +1079,16 @@ set(c_axes, 'Color', 'none', 'XColor', [192 192 1]/255, 'XGrid', 'on', ...
 guidata(hObject, handles);
 
 
-
 % ------------------------------------------------ MenuChSelection_Callback
 function MenuChSelection_Callback(hObject, eventdata, handles)
 % hObject    handle to MenuChSelection (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+% if EDF file check failed, then return
+if handles.EDF_CHECK == 0 
+    return
+end
 
 % Create Channel Selection Structure
 channelSelectionStruct.ChSelectionH = handles.ChSelectionH;
@@ -1112,13 +1117,16 @@ guidata(hObject,handles);
 handles = UpDatePlot(hObject, handles);
 
 
-
 % ----------------------------------------------------- MenuFilter_Callback
 function MenuFilter_Callback(hObject, eventdata, handles)
 % hObject    handle to MenuFilter (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+% if EDF file check failed, then return
+if handles.EDF_CHECK == 0 
+    return
+end
 
 % Create structure containing filter settings
 filterSettingsStruct.FilterSettingH = handles.figure1;
@@ -1161,6 +1169,11 @@ function ListBoxComments_Callback(hObject, eventdata, handles)
 % Hints: contents = cellstr(get(hObject,'String')) returns ListBoxComments contents as cell array
 %        contents{get(hObject,'Value')} returns selected item from ListBoxComments
 
+% if EDF file check failed, then return
+if handles.EDF_CHECK == 0 
+    return
+end
+
 Sel = get(hObject,'value');
 
 %[Original] Temp; Temp => popMenuWindowTime_value
@@ -1199,7 +1212,6 @@ guidata(hObject,handles);
 handles = UpDatePlot(hObject,handles);
 
 guidata(hObject, handles);
-
 
 
 %-------------------------------------------------- figure1_CloseRequestFcn
@@ -1334,25 +1346,63 @@ handles = UpDatePlot(hObject,handles);
 guidata(hObject, handles);
 
 
-
 % ---------------------------------------------------- MenuOpenXML_Callback
 function MenuOpenXML_Callback(hObject, eventdata, handles)
 % hObject    handle to MenuOpenXML (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+% if EDF file check failed, then return
+if handles.EDF_CHECK == 0 
+    return
+end
+
 %[Original] Temp; Temp => EdfFileName
 EdfFileName = handles.FileName;
 EdfFileName([-3:0] + end) = [];
 [FileNameAnn, FilePath] = uigetfile([EdfFileName '*.xml'],'Open XML File');
+%%% structure to be considered
+% mappingFn = '/Users/wei/Documents/MATLAB/SleepPortalViewer-12-1-2014/compumedics_mapping.json';
+
+%%% xml validation: TODO
+try 
+    annObj = loadPSGAnnotationClass([FilePath, FileNameAnn]);
+    % annObj.loadFile process:
+    %   1. Open file
+    %   2. parseNodes, including check of tag existance
+    %   3. validateEvents, validate fields and event names
+	annObj = annObj.loadFile;
+	handles.ScoredEvent = annObj.ScoredEvent;
+    handles.EpochLength = annObj.EpochLength;
+    handles.SleepStages = annObj.sleepStageValues; 
+    
+    if ~isempty(annObj.errList)
+        fprintf('Error list length: %0.0f\n', length(annObj.errList));
+        dispErr = strjoin(annObj.errList, '\n');
+        errordlg(dispErr, 'XML Event Error', 'modal');
+    end
+    
+    
+    % Display basic info:
+    numScoredEvents = length(annObj.ScoredEvent);
+    fprintf('============== Basic info =================\n')
+    fprintf('Number of scored events = %0.0f\n',numScoredEvents);
+    fprintf('Number of epochs = %0.0f\n',length(handles.SleepStages));
+    fprintf('Epoch length = %0.0f\n', handles.EpochLength);
+    fprintf('===========================================\n')
+catch exception
+ 	errMsg = sprintf('Could not load: %s', [FilePath, FileNameAnn]);
+    errordlg(errMsg, 'Fatal Error', 'modal')
+end
+%%% 2014-11-25, by Wei
 
 global hasSleepStages; % TODO, 2014-11-03, by Wei, should be improved by using configuration file
 hasSleepStages = 0;
 
-handles.FlagAnn=1;
+handles.FlagAnn = 1;
 % if there is ann file
-%%% what does sum(FileNameAnn == 0) mean? Can we use isempty() method?
-if ~(sum(FileNameAnn == 0))
+%%% Can we use isempty() method?
+if ~(sum(FileNameAnn == 0)) % if this file name is not empty string
     % check for the version of xml
     Fid = fopen([FilePath FileNameAnn],'r');
     % TODO should use fileread(filename)
@@ -1379,34 +1429,33 @@ if ~(sum(FileNameAnn == 0))
          handles.SleepStages = Temp;
     else
         % it is PhysiMIMI file
-        % disp('calling readXML');
-        
-        if isCompumedics
+        if ~isempty(isCompumedics)
             hasSleepStages = 1;
         end
 
         handles.FlagAnnType = 0;
-        [handles.ScoredEvent, handles.SleepStages, handles.EpochLength, annotation] = readXML([FilePath FileNameAnn]);
+        % handles.ScoredEvent is an array of event structure
+        % eventStruct = struct('EventConcept','Start','Duration','SpO2Baseline','SpO2Nadir');
+%%%     [handles.ScoredEvent, handles.SleepStages, handles.EpochLength, annotation] = readXML([FilePath FileNameAnn]);
         handles.PlotType = 0;
     end
     
-    % Create list box contents
+    % Create list box contents TODO: extract into another function
     % ListBox Comments annotation
-    %%% change variable 'Temp' to reflect the meaning
-    Temp = [];
+    %[Orignal] Temp = [];
+    Temp = cell(1, length(handles.ScoredEvent));
     for i=1:length(handles.ScoredEvent)
         Temp1 = fix(handles.ScoredEvent(i).Start / 30) + 1;
         Temp{i}= [num2str(Temp1) ' - ' datestr(handles.ScoredEvent(i).Start/86400,'HH:MM:SS - ') handles.ScoredEvent(i).EventConcept];
     end
-    set(handles.ListBoxComments,'string',Temp);
+    set(handles.ListBoxComments, 'string', Temp);    
     
-    
-    % Plot histogram
+    % Plot histogram  TODO: extract into another function
     if hasSleepStages
          axes(handles.axes2)
          cla
          hold off    
-         plot(handles.SleepStages,'LineWidth',1.5,'color','k');
+         plot(handles.SleepStages, 'LineWidth', 1.5, 'color','k');
          hold on
          set(handles.axes2,'xTick',[0 length(handles.SleepStages)],'xlim',[0 length(handles.SleepStages)],'xticklabel',''...
              ,'fontweight','bold','yTick',[0:5],'ylim',[-0.5 5.5],'color',[205 224 247]/255,'yTickLabel',{'R','','N3','','N1','W'})
@@ -1433,15 +1482,8 @@ if ~(sum(FileNameAnn == 0))
     guidata(hObject, handles);
 else
     if handles.XML_LOADED == 0
-%         axes(handles.axes2)
-%         cla
-%         hold off
-%         set(handles.ListBoxComments,'string','');
-%         handles.FlagAnn=0;
     end
 end
-
-
 
 
 %------------------------------------------------ figure1_WindowKeyPressFcn
@@ -1454,6 +1496,10 @@ function figure1_WindowKeyPressFcn(hObject, eventdata, handles)
 %	Modifier: name(s) of the modifier key(s) (i.e., control, shift) pressed
 % handles    structure with handles and user data (see GUIDATA)
 
+% if EDF file check failed, then return
+if handles.EDF_CHECK == 0 
+    return
+end
 
 % Select the signal to present
 Loc=get(handles.axes1,'CurrentPoint');
@@ -1558,7 +1604,7 @@ elseif currentCharacter == handles.RIGHT_ARROW_KEY
                 Temp(i)=handles.ScoredEvent(i).Start;
             end
             Temp = Temp - get(handles.SliderTime,'value');
-            [Temp Index]=min(abs(Temp));
+            [Temp, Index]=min(abs(Temp));
             set(handles.ListBoxComments,'value',Index);
         end
         
@@ -1590,7 +1636,7 @@ elseif currentCharacter == handles.LEFT_ARROW_KEY
                 Temp(i)=handles.ScoredEvent(i).Start;
             end
             Temp = Temp - get(handles.SliderTime,'value');
-            [Temp Index]=min(abs(Temp));
+            [Temp, Index]=min(abs(Temp));
             set(handles.ListBoxComments,'value',Index);
         end
         
@@ -1613,6 +1659,10 @@ function figure1_WindowButtonDownFcn(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+% if EDF file check failed, then return
+if handles.EDF_CHECK == 0 
+    return
+end
 
 %-----------------------------------------------------------------histogram
 % Get location of cursor at Window's button down
@@ -1698,9 +1748,7 @@ if (Loc(3)>yLim(1) & Loc(3)<yLim(2) & Loc(1)>xLim(1) & Loc(1)<xLim(2))
         SelectedChMap{i,1}((SelectedChMap{i,1}==' '))=[];
     end
     
-    set(handles.TextInfo,'string',['Active Ch : ' SelectedChMap{Sel,1}]);
-    
-    
+    set(handles.TextInfo,'string',['Active Ch : ' SelectedChMap{Sel,1}]);        
 end
 
 % User selected outside view
@@ -1718,13 +1766,17 @@ end
 guidata(hObject,handles);
 
 
-
 %-------------------------------------------- figure1_WindowButtonMotionFcn
 % --- Executes on mouse motion over figure - except title and menu.
 function figure1_WindowButtonMotionFcn(hObject, eventdata, handles)
 % hObject    handle to figure1 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+% if EDF file check failed, then return
+if handles.EDF_CHECK == 0 
+    return
+end
 
 % Get current axis
 Loc=get(handles.axes1,'CurrentPoint');
@@ -1777,6 +1829,11 @@ function CheckBoxSleepAxes_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+% if EDF file check failed, then return
+if handles.EDF_CHECK == 0 
+    return
+end
+
 % Hint: get(hObject,'Value') returns toggle state of CheckBoxSleepAxes
 clc
 
@@ -1823,7 +1880,6 @@ handles = UpDatePlot(hObject,handles);
 guidata(hObject,handles);
 
 
-
 % --- Executes on button press in pbRightButton.
 function pbRightButton_Callback(hObject, eventdata, handles)
 % hObject    handle to pbRightButton (see GCBO)
@@ -1868,7 +1924,6 @@ if handles.EDF_LOADED == 1
 end
 
 
-
 % --- Executes on button press in pbLeftEpochButton.
 function pbLeftEpochButton_Callback(hObject, eventdata, handles)
 % hObject    handle to pbLeftEpochButton (see GCBO)
@@ -1909,7 +1964,6 @@ if handles.EDF_LOADED == 1
     end
     
 end
-
 
 
 % --- Executes on button press in pb_GoToStart.
@@ -1994,6 +2048,11 @@ function pbAutoScale_Callback(hObject, eventdata, handles)
 % hObject    handle to pbAutoScale (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+% if EDF file check failed, then return
+if handles.EDF_CHECK == 0 
+    return
+end
 
 % Use the auto scale values to set the scale
 
