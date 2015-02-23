@@ -18,15 +18,5 @@ function StartMe_cmdPars(varargin) %varargin
             XmlFileName = varargin{4};
     end
     
-   % global EdfFilePath;
-   % global EdfFileName;
-    %EdfFilePath = edfName;
-    %EdfFileName = edfPath;
-    
-%     FilePath = edfName;
-%     FileName = edfPath;
-%     XmlFilePath = xmlName;
-%     XmlFileName = xmlPath;
-    
     EDF_View({})
 end
