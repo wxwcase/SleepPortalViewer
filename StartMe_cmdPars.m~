@@ -7,21 +7,25 @@ function StartMe_cmdPars(varargin) %varargin
     global XmlFilePath;
     global XmlFileName;
     
-    if isempty(varargin)
-        needOpenDialog = true;
-    elseif length(varargin) == 2
-        needOpenDialog = false;
+    if length(varargin) ~= 4
+        needOpenDialog = TRUE;
+    else
+        needOpenDialog = FALSE;
         FilePath = varargin{1};
-        FileName = varargin{2};
-    elseif length(varargin) > 2
-            XmlFilePath = varargin{3};
-            XmlFileName = varargin{4};
+        FileName = varargin{1};
+        XmlFilePath = varargin{1};
+    XmlFileName = varargin{1};
     end
     
    % global EdfFilePath;
    % global EdfFileName;
     %EdfFilePath = edfName;
     %EdfFileName = edfPath;
+    
+    FilePath = varargin{1};
+    FileName = varargin{1};
+    XmlFilePath = varargin{1};
+    XmlFileName = varargin{1};
     
 %     FilePath = edfName;
 %     FileName = edfPath;
