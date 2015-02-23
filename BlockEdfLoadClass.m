@@ -366,7 +366,8 @@ classdef BlockEdfLoadClass
             'No Error: File meets published EDF standard'; ...
             'BlockEdfLoadClass: Input Error';...
             'EDF Deviation: Applications may run'; ...
-            'Scaling Error: May cause applications to fail'; ...
+            % 'Scaling Error: May cause applications to fail'; ...
+            'Scaling Warning: Applications may run'; ...
             'Fatal Error: Access Error'; ...
             'Fatal Error: Data Access Error and Scaling Error'  ...
         };
@@ -916,18 +917,22 @@ classdef BlockEdfLoadClass
                     'data_record_duration';   'num_signals'};   
                 
                 % Checking Function
-                checkAsciiF = @(x) and(int8(x)<32, int8(x)>126);
+                checkAsciiF = @(x) and(int8(x)<32, int8(x)>127);
                 check_num_header_bytesF = @(x)x==256+256*obj.header.num_signals;
                 check_num_data_recordsF = @(x)x==256;
                 check_data_record_durationF = @(x)x==256;
                 check_num_signalsF = @(x)and(x>0,x<=256); 
                 check_periods = @(x)and(strcmp(x(3),'.'),strcmp(x(6),'.'));
-                check_day = @(x)and(str2num(x(1:2))>0,str2num(x(1:2))<=31);
-                check_month = @(x)and(str2num(x(4:5))>0,str2num(x(4:5))<=12);
-                check_year = @(x)and(str2num(x(1:2))>0,str2num(x(7:8))<=31); %%% 28.08.96 failed
-                check_hour = @(x)and(str2num(x(1:2))>0,str2num(x(1:2))<=24);
-                check_minute = @(x)and(str2num(x(4:5))>0,str2num(x(4:5))<=60);
-                check_second = @(x)and(str2num(x(1:2))>0,str2num(x(7:8))<=60);
+                check_day = @(x)and(str2num(x(1:2))>=0,str2num(x(1:2))<=31);
+                check_month = @(x)and(str2num(x(4:5))>=0,str2num(x(4:5))<=12);
+                % check_year =
+                % @(x)and(str2num(x(1:2))>0,str2num(x(7:8))<=31); %%%
+                % 28.08.96 failed, changed on Jan, 29, 2015
+                check_year = @(x)and(str2num(x(7:8))>=0,str2num(x(7:8))<=99);
+                check_hour = @(x)and(str2num(x(1:2))>=0,str2num(x(1:2))<=23);
+                check_minute = @(x)and(str2num(x(4:5))>=0,str2num(x(4:5))<=59);
+                check_second = @(x)and(str2num(x(7:8))>=0,str2num(x(7:8))<=59);
+                % check_second = @(x)and(str2num(x(1:2))>0,str2num(x(7:8))<=60);
                 check_num_signal = @(x)and(x>0, x<=obj.MAX_SIGNALS);
                 check_data_records = @(x)x>0;
                 check_data_record_duration = @(x)x>0;

@@ -22,11 +22,10 @@ function varargout = EDF_View(varargin)
 
 % Edit the above text to modify the response to help EDF_View
 
-% Last Modified by GUIDE v2.5 23-Aug-2012 00:07:30
+% Last Modified by GUIDE v2.5 26-Jan-2015 16:52:12
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
-% global hasSleepStages;
 gui_State = struct('gui_Name',       mfilename, ...
     'gui_Singleton',  gui_Singleton, ...
     'gui_OpeningFcn', @EDF_View_OpeningFcn, ...
@@ -43,6 +42,7 @@ gui_State = struct('gui_Name',       mfilename, ...
     else
         gui_mainfcn(gui_State, varargin{:});
     end
+    
 % End initialization code - DO NOT EDIT
 
 
@@ -92,7 +92,6 @@ handles.UP_ARROW_KEY = 30;
 handles.DOWN_ARROW_KEY = 31;
 handles.CONTROL_MODIFIER = 'control';
 
-
 % Load and display button 
 %Coloca una imagen en cada botón
 [a,map]=imread('start.jpg');
@@ -134,8 +133,11 @@ set(handles.pbGoToEnd,'CData',g);
 %---------------------------------------------------------- Operating Flags
 handles.EDF_LOADED = 0;
 handles.XML_LOADED = 0;
-handles.FlagAnn = 0;
+handles.hasAnnotation = 0;
 handles.EDF_CHECK = 0; %%% TODO
+% TODO Next Step Flags: read from configuration file
+handles.hasSleepStages = 0;
+% handles.categories = []; % array of available categories
 %--------------------------------------------------------------------------
 
 
@@ -150,6 +152,7 @@ handles.FileInfo = [];
 handles.SelectedCh = [];
 handles.FilterPara = [];
 handles.Sel = 1; % Select first signal
+handles.eventIndexInCategory = []; % for each category, this list contain the event index in the annotation
 
 % Subset of channel selection information
 handles.ChInfo = [];
@@ -210,6 +213,24 @@ handles.openStartFolder = [handles.openStartFolder, handles.fileSeperator];
 guidata(hObject, handles);
 % UIWAIT makes EDF_View wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
+global FilePath;
+global FileName;
+global XmlFilePath;
+global XmlFileName;
+
+global needOpenDialog;
+%  disp(needOpenDialog); default is 0
+if (~needOpenDialog)
+    % Step#1: Visualize Edf
+    if (~(strcmp(FilePath,'') || strcmp(FileName, '')))
+        MenuOpenEDF_Callback(hObject, eventdata, handles);
+        % Step#2: Visualize Xml
+        if (~(strcmp(XmlFilePath,'') || strcmp(XmlFileName, '')))
+            MenuOpenXML_Callback(hObject, eventdata, handles);
+        end
+    end
+end
+needOpenDialog = logical(1);
 
 
 %------------------------------------------------------- EDF_View_OutputFcn
@@ -230,26 +251,45 @@ function MenuOpenEDF_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+%%% TODO: 
+%%% 1. If handles.EDF_CHECK == 0, disable gui compoenent that calls
+%%%     responsible callbacks
+%%% 2. Using configuration file to do the tasks
+global needOpenDialog;
+global FilePath;
+global FileName;
+
+set(handles.pmAnnotations, 'string', {}); 
+set(handles.ListBoxComments, 'string', {});
+
 % Openfile start path
-openStartFolder = handles.openStartFolder;
-fileSpec = strcat(openStartFolder,'*.edf');
-[FileName, FilePath]=uigetfile(fileSpec,'Open EDF File');
+if (needOpenDialog)
+% Openfile start path
+    openStartFolder = handles.openStartFolder;
+    fileSpec = strcat(openStartFolder,'*.edf');
+    [FileName, FilePath] = uigetfile(fileSpec,'Open EDF File');
 % InterfaceObj = findobj(gcf, 'Enable', 'on');
+end
+
+if FileName == 0 & FilePath == 0
+    return
+end
 
 try
     belClass = BlockEdfLoadClass([FilePath FileName]);
     belClass = belClass.blockEdfLoad; 
     belClass = belClass.CheckEdf;
     fprintf('Checking: %s\n', [FilePath FileName]);
-    ErrMsg = '';
     % belClass.DispCheck % Access checking information you want to look at lines 321-327 on BlockEdfLoadClass
     if ~isempty(belClass.errMsg) && belClass.mostSeriousErrValue <= 4
         belClass.DispCheck 
-        ErrMsg = belClass.errSummary;
-        for i=1:length(belClass.errList)            
-            ErrMsg = [ErrMsg, belClass.errList(i)];
-        end  
-        errordlg(ErrMsg, 'Errors', 'modal');
+        ErrMsg = []; %belClass.errSummary;
+        ErrMsg = [ErrMsg, showErrorMessages(belClass.errList)];
+%         for i=1:length(belClass.errList)            
+%             ErrMsg = [ErrMsg, belClass.errList(i)]; %%% TODO to be changed
+%         end  
+        % errordlg(ErrMsg, 'Warning', 'modal');
+        warndlg(ErrMsg, belClass.errSummary, 'modal');
     end
     if belClass.mostSeriousErrValue > 4
         ErrMsg = 'Fatal Error: Cannot load';  
@@ -279,13 +319,9 @@ if ~(length(FilePath)==1)
 
     set(handles.figure1,'pointer', 'watch');
 
-    %[Original] Temp = EdfInfo(handles.FileName); read file info and
     %channel info
     tempEdfHandles = EdfInfo(handles.FileName);
-%      tempEdfHandles = EdfLoad(handles.FileName);
 
-    %[Original] handles.FileInfo   = Temp.FileInfo;
-    %[Original] handles.ChInfo     = Temp.ChInfo;
     handles.FileInfo  = tempEdfHandles.FileInfo;
     handles.ChInfo    = tempEdfHandles.ChInfo;
     
@@ -297,7 +333,6 @@ if ~(length(FilePath)==1)
     % data record
     numOfChannels = length(handles.ChInfo.nr); % numOfSamples => numOfChannels
 
-    %[Original] Temp = [[1:length(handles.ChInfo.nr)]' zeros(length(handles.ChInfo.nr),1)];
     % Initialize to be selected channels
     Temp = [(1:numOfChannels)' zeros(numOfChannels,1)];
    
@@ -389,7 +424,7 @@ if ~(length(FilePath)==1)
     % Get file description, which contains name/date/bytes/isdir/datenum
     %[Original] Temp, Temp => EdfFileAttributes
     EdfFileAttributes = dir(handles.FileName);
-    %[Original] Temp, Temp => EdfFileAttributes; TODO: determine the total
+    %%%[Original] Temp, Temp => EdfFileAttributes; TODO: determine the total
     %time later from EDF file
     handles.TotalTime = (EdfFileAttributes.bytes - handles.FileInfo.HeaderNumBytes) ...
         / 2  / sum(handles.ChInfo.nr) * handles.FileInfo.DataRecordDuration;
@@ -405,7 +440,7 @@ if ~(length(FilePath)==1)
     
     % Update Flags and Variables before making external calls
     handles.EDF_LOADED = 1;
-    handles.FlagAnn = 0 ;
+    handles.hasAnnotation = 0 ;
     handles.XML_LOADED = 0;
     
     % Update figure title
@@ -582,7 +617,7 @@ sliderValue = round(get(hObject,'value'));
 set(hObject,'value',sliderValue);
 
 % Add annotation if they exist
-if handles.FlagAnn
+if handles.hasAnnotation
     % find the closest comments
     %%% change variable 'Temp' to reflect the meaning
     %[Original] Temp = []; Temp => StartTimes; TODO ScoredEvent_StartTime;
@@ -607,7 +642,7 @@ function handles = DataLoad(handles)
 % DataLoad rewritten to access data loaded with block load.
 
 % Access epoch
-popup_id = get(handles.PopMenuWindowTime,'value');
+popup_id = get(handles.PopMenuWindowTime,'value'); % index of menu window time corresponding to sec value
 WindowTime = handles.epoch_menu_values(popup_id);
 Time = get(handles.SliderTime,'value');
 
@@ -633,15 +668,12 @@ for i=1 : WindowTime/handles.FileInfo.DataRecordDuration
 end
 fclose('all');
 
-
 handles.Data = Data;
 handles=DataNormalize(handles);
 Data = handles.Data;
 
 handles.Data=[];
-
 SelectedCh = handles.SelectedCh;
-
 FilterPara = handles.FilterPara;
 
 
@@ -675,7 +707,7 @@ end
 
 %--------------------------------------------------------------- UpDatePlot
 function handles = UpDatePlot(hObject, handles)
-hasSleepStages = 0; % TODO
+%%% hasSleepStages = 0; % TODO 
 % set the epoch number
 % each epoch has been considered as 30 sec
 % get  current epoch length
@@ -710,7 +742,7 @@ WindowTime = handles.epoch_menu_values(popup_id);
 
 SelectedCh = handles.SelectedCh;
 
-% Identify channels to plot
+% Identify channels to plot   %%% TODO
 %[Original] SelectedChMap = [];
 SelectedChMap = cell(length(SelectedCh), 1);
 for i=1:size(SelectedCh,1)
@@ -723,12 +755,12 @@ for i=1:size(SelectedCh,1)
 end
 
 % Process Annotations, if present
-if handles.FlagAnn
+if handles.hasAnnotation
     % plot sleep stage line
     popup_id = get(handles.PopMenuWindowTime,'Value');
     epoch_width = handles.epoch_menu_values(popup_id);
     epoch_width = max(epoch_width, handles.minimum_cursor_width);
-    if hasSleepStages
+    if handles.hasSleepStages %%% TODO
         set(handles.LineSleepStage,...=
             'xData',[-1 -1 1 1 -1] * epoch_width / 2 + get(handles.SliderTime,'value') + epoch_width/2);
         set(handles.LineSleepStage,'FaceAlpha',0.5);
@@ -765,7 +797,7 @@ if handles.FlagAnn
                 
                 fill([Start(i)  Temp Temp Start(i)], ...
                     [-ChNum-3/2 -ChNum-3/2 -ChNum-1/2 -ChNum-1/2 ]...
-                    ,[190 222 205]/255);
+                    ,[190 222 205]/255);   %%% TODO: fill green bar under selected chanel
                 
                 plot([Start(i)  Temp Temp Start(i) Start(i)], ...
                     [-ChNum-3/2 -ChNum-3/2 -ChNum-1/2 -ChNum-1/2 -ChNum-3/2]...
@@ -812,7 +844,7 @@ if handles.FlagAnn
                 
                 fill([0  Temp Temp 0], ...
                     [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 ]+2 ...
-                    ,[190 222 205]/255);
+                    ,[190 222 205]/255);   %%% TODO: fill green bar under selected channel
                 
                 plot([0  Temp Temp 0 0], ...
                     [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 -ChNum(i)-3/2]+2 ...
@@ -848,7 +880,7 @@ if handles.FlagAnn
                     ChNum = ChNum(end);
                     fill([Start(i)  Temp Temp Start(i)], ...
                         [-ChNum-3/2 -ChNum-3/2 -ChNum-1/2 -ChNum-1/2 ]+2 ...
-                        ,[190 222 205]/255);
+                        ,[190 222 205]/255);   %%% TODO: fill gree...
                     
                     plot([Start(i)  Temp Temp Start(i) Start(i)], ...
                         [-ChNum-3/2 -ChNum-3/2 -ChNum-1/2 -ChNum-1/2 -ChNum-3/2]+2 ...
@@ -899,7 +931,7 @@ if handles.FlagAnn
                 if ~isempty(ChNum)
                     fill([0  Temp Temp 0], ...
                         [-ChNum-3/2 -ChNum-3/2 -ChNum-1/2 -ChNum-1/2 ]+2 ...
-                        ,[190 222 205]/255);
+                        ,[190 222 205]/255); %%% Fill green bar under selected channel
 
                     plot([0  Temp Temp 0 0], ...
                         [-ChNum-3/2 -ChNum-3/2 -ChNum-1/2 -ChNum-1/2 -ChNum-3/2]+2 ...
@@ -927,8 +959,6 @@ set(handles.textTotalEpochs,'String',totalString);
 epochsString = sprintf('%.0f (%.0f)',epoch,epochTime30Sec);
 set(handles.textCurrent30secEpochs,'String',epochsString);
 end
-
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -964,10 +994,17 @@ handles.auto_scale_factor(index) = handles.auto_scale_height./data_range(index);
 guidata(hObject, handles);
 
 % Stage information
-if hasSleepStages
- if and(handles.FlagAnn, epoch_length == 30)
+if handles.hasSleepStages %%% TODO
+ if and(handles.hasAnnotation, epoch_length == 30)
      % plot sleep states
+     %%% TODO temporal approach to handles index out of range error
+%      if get(handles.SliderTime, 'value') + WindowTime > length(handles.SleepStages)
+%          newVal = length(handles.SleepStages) - WindowTime;
+%      else 
+%          newVal = get(handles.SliderTime, 'value');
+%      end
      Temp=handles.SleepStages([1:WindowTime]+get(handles.SliderTime,'value'));
+%      Temp=handles.SleepStages([1:WindowTime]+newVal);
      Temp = Temp - min(Temp);
      if max(Temp)>0
          Temp = Temp / max(Temp) - 0.25;
@@ -1174,7 +1211,16 @@ if handles.EDF_CHECK == 0
     return
 end
 
+%%% TODO: Can use 'listdlg()' function and a button to implement the
+%%% dropdown list to select event categories
+
 Sel = get(hObject,'value');
+disp(sprintf('listbox size: %d', length(handles.eventIndexInCategory)));
+SelNum = handles.eventIndexInCategory(Sel);
+disp(sprintf('Selected index: Sel#: %d',Sel));
+disp(sprintf('selected event number: SelNum# %d', SelNum));
+disp(sprintf('handles.ScoredEvent size: # %d', length(handles.ScoredEvent)));
+disp(sprintf('Sleep Stages Number: # %d', length(handles.SleepStages)));
 
 %[Original] Temp; Temp => popMenuWindowTime_value
 popMenuWindowTime_value = get(handles.PopMenuWindowTime, 'value');
@@ -1188,14 +1234,15 @@ WindowTime = str2num(CurrentPopMenuWindowTime(1:end-3));
 % bug fixed: when select non-exist list of events after loading EDF file
 % and before loading annotation(XML) file
 if isfield(handles, 'ScoredEvent') % added check field(handles.ScoredEvent)
-    CurrentPopMenuWindowTime = WindowTime - handles.ScoredEvent(Sel).Duration; %
+    CurrentPopMenuWindowTime = WindowTime - handles.ScoredEvent(SelNum).Duration; % Sel has problems TODO%%%
 
-    if CurrentPopMenuWindowTime > 0 %[Original]
-        Time = handles.ScoredEvent(Sel).Start-CurrentPopMenuWindowTime/2;%
+    if CurrentPopMenuWindowTime > 0 %%%[Original] has problems TODO
+        Time = handles.ScoredEvent(SelNum).Start-CurrentPopMenuWindowTime/2;%
     else
-        Time = handles.ScoredEvent(Sel).Start; %[Original]
+        Time = handles.ScoredEvent(SelNum).Start; %[Original]
     end
     set(handles.SliderTime,'value',fix(Time)); %[Original]
+    disp(sprintf('Selected slider value: #: %d', get(handles.SliderTime, 'value')));
 end
 
 %CurrentPopMenuWindowTime = WindowTime - handles.ScoredEvent(Sel).Duration; %
@@ -1207,11 +1254,13 @@ end
 %end
 %set(handles.SliderTime,'value',fix(Time));%
 
-handles=DataLoad(handles);
-guidata(hObject,handles);
-handles = UpDatePlot(hObject,handles);
-
-guidata(hObject, handles);
+if get(handles.SliderTime, 'value') <= length(handles.SleepStages) - WindowTime
+    % Fixed bug: updataPlot error issue(sliderTime value exceeds sleepstages length)
+    handles=DataLoad(handles);
+    guidata(hObject,handles);
+    handles = UpDatePlot(hObject,handles);
+    guidata(hObject, handles);
+end
 
 
 %-------------------------------------------------- figure1_CloseRequestFcn
@@ -1260,15 +1309,6 @@ catch err
 end
 
 try
-%     Temp=evalin('base','ChSelectionH');
-%     if ~isempty(Temp)
-%         delete(Temp);
-%     end
-%     
-%     Temp=evalin('base','FilterSettingH');
-%     if ~isempty(Temp)
-%         delete(Temp);
-%     end
     
     % Note: Not sure what these values are
     % Saved to handles just in case
@@ -1304,8 +1344,6 @@ function EditEpochNumber_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'String') returns contents of EditEpochNumber as text
 %        str2double(get(hObject,'String')) returns contents of EditEpochNumber as a double
 
-
-
 Temp = get(handles.PopMenuWindowTime,'value');
 Temp1 = get(handles.PopMenuWindowTime,'string');
 Temp = Temp1{Temp};
@@ -1323,10 +1361,9 @@ if EpochNumber>MaxEpoch
     set(hObject,'string',num2str(EpochNumber));
 end
 
-
 set(handles.SliderTime,'value',(EpochNumber-1)*30);
 
-if handles.FlagAnn
+if handles.hasAnnotation
     % find the closest comments
     Temp=[];
     for i=1:length(handles.ScoredEvent)
@@ -1336,8 +1373,6 @@ if handles.FlagAnn
     [Temp Index]=min(abs(Temp));
     set(handles.ListBoxComments,'value',Index);
 end
-
-
 
 handles=DataLoad(handles);
 guidata(hObject,handles);
@@ -1355,18 +1390,24 @@ function MenuOpenXML_Callback(hObject, eventdata, handles)
 % if EDF file check failed, then return
 if handles.EDF_CHECK == 0 
     return
+else
+    % should clean last open file cache, wei wang, Jan, 15, 2015
+    %handles.hasSleepStages = 0;    
+    %handles.eventIndexInCategory = [];
+    clearOpenCache;
 end
 
 %[Original] Temp; Temp => EdfFileName
 EdfFileName = handles.FileName;
 EdfFileName([-3:0] + end) = [];
 [FileNameAnn, FilePath] = uigetfile([EdfFileName '*.xml'],'Open XML File');
+if FileNameAnn == 0 & FilePath == 0
+    return
+end
 %%% structure to be considered
-% mappingFn = '/Users/wei/Documents/MATLAB/SleepPortalViewer-12-1-2014/compumedics_mapping.json';
 
-%%% xml validation: TODO
 try 
-    annObj = loadPSGAnnotationClass([FilePath, FileNameAnn]);
+    annObj = loadPSGAnnotationClass([FilePath, FileNameAnn]);    
     % annObj.loadFile process:
     %   1. Open file
     %   2. parseNodes, including check of tag existance
@@ -1376,12 +1417,41 @@ try
     handles.EpochLength = annObj.EpochLength;
     handles.SleepStages = annObj.sleepStageValues; 
     
-    if ~isempty(annObj.errList)
-        fprintf('Error list length: %0.0f\n', length(annObj.errList));
-        dispErr = strjoin(annObj.errList, '\n');
-        errordlg(dispErr, 'XML Event Error', 'modal');
+    if ~isempty(annObj.errMap) %annObj.errList
+%           fprintf('Error list length: %0.0f\n', length(annObj.errList));
+%           dispErr = strjoin(annObj.errList, '\n');
+%           errordlg(dispErr, 'XML Event Error', 'modal');
+        % display errors
+          result = values(annObj.errMap);
+          msg = {};
+          for i=1:length(result)
+              msg{end+1} = result{i};
+          end
+          disp('----------------------')
+          for i=1:length(msg)
+              disp(msg{i})
+          end
+          errordlg(msg, 'XML Event Error', 'modal');
     end
     
+    if ~isempty(annObj.mappingFn)
+%       disp(annObj.mappingFn);
+        % eventMap: a dictionary containing {'eventType', {event cell
+        % array}} entries
+        [eventMap, ~, ~] = loadPSGAnnotationClass.testLoadCSV(annObj.mappingFn);
+        handles.eventMap = eventMap;
+        availableEventNames = annObj.availableEventNames;
+        availableEventTypes = {};
+        for i = 1:length(availableEventNames)
+            name = availableEventNames(i);
+            if isKey(eventMap, name)% & ~find(ismember(annObj.EventStages, name), 1)
+                availableEventTypes{end+1} = eventMap(name{1});
+            end
+        end
+        availableEventTypes = unique(availableEventTypes);
+        handles.availableEventTypes = availableEventTypes;
+        set(handles.pmAnnotations, 'string', availableEventTypes);    % record and show event types(in array)
+    end
     
     % Display basic info:
     numScoredEvents = length(annObj.ScoredEvent);
@@ -1394,19 +1464,14 @@ catch exception
  	errMsg = sprintf('Could not load: %s', [FilePath, FileNameAnn]);
     errordlg(errMsg, 'Fatal Error', 'modal')
 end
-%%% 2014-11-25, by Wei
 
-global hasSleepStages; % TODO, 2014-11-03, by Wei, should be improved by using configuration file
-hasSleepStages = 0;
-
-handles.FlagAnn = 1;
+handles.hasAnnotation = 1;
 % if there is ann file
-%%% Can we use isempty() method?
-if ~(sum(FileNameAnn == 0)) % if this file name is not empty string
+if ~(sum(FileNameAnn == 0)) % if this file name is not empty string, use ~isempty() instead
     % check for the version of xml
-    Fid = fopen([FilePath FileNameAnn],'r');
+    Fid = fopen([FilePath FileNameAnn], 'r');
     % TODO should use fileread(filename)
-    Temp = fread(Fid,[1 inf],'uint8');
+    Temp = fread(Fid,[1 inf],'uint8'); % not efficient
     fclose(Fid);
     isPSG = strfind(Temp,'PSGAnnotation');
     isCompumedics = strfind(Temp,'Compumedics');
@@ -1414,62 +1479,46 @@ if ~(sum(FileNameAnn == 0)) % if this file name is not empty string
     % Determine file type
     if isempty(isPSG)
         % it is compumedics ann file
-        %%% What is FlagAnnType stands for, for example 1(or 0) 
-         handles.FlagAnnType = 1;
-         [handles.ScoredEvent, handles.SleepStages, handles.EpochLength]=...
-             readXML_Com([FilePath FileNameAnn]);
-         handles.PlotType = 1;
+        %%% What is hasAnnotationType stands for, for example 1(or 0) 
+        handles.hasAnnotationType = 1;
+        [handles.ScoredEvent, handles.SleepStages, handles.EpochLength]=...
+            readXML_Com([FilePath FileNameAnn]);
+        handles.PlotType = 1;
          
-         %%% change variable 'Temp' to reflect the meaning
-         Temp = [];
-         for i=1:length(handles.SleepStages)
-             % TODO: preallocate Temp
-             Temp = [Temp ones(1,30) * handles.SleepStages(i)];
-         end
-         handles.SleepStages = Temp;
+        %%% change variable 'Temp' to reflect the meaning
+        Temp = [];
+        for i=1:length(handles.SleepStages)
+            Temp = [Temp ones(1,30) * handles.SleepStages(i)];
+        end
+        handles.SleepStages = Temp;
     else
         % it is PhysiMIMI file
         if ~isempty(isCompumedics)
-            hasSleepStages = 1;
+            handles.hasSleepStages = 1; %%% TODO set hasSleepStages 
+            handles.PlotType = 0; %%% Added 1-30-2015
         end
 
-        handles.FlagAnnType = 0;
+        handles.hasAnnotationType = 0;
         % handles.ScoredEvent is an array of event structure
         % eventStruct = struct('EventConcept','Start','Duration','SpO2Baseline','SpO2Nadir');
-%%%     [handles.ScoredEvent, handles.SleepStages, handles.EpochLength, annotation] = readXML([FilePath FileNameAnn]);
         handles.PlotType = 0;
     end
     
     % Create list box contents TODO: extract into another function
     % ListBox Comments annotation
-    %[Orignal] Temp = [];
-    Temp = cell(1, length(handles.ScoredEvent));
-    for i=1:length(handles.ScoredEvent)
-        Temp1 = fix(handles.ScoredEvent(i).Start / 30) + 1;
-        Temp{i}= [num2str(Temp1) ' - ' datestr(handles.ScoredEvent(i).Start/86400,'HH:MM:SS - ') handles.ScoredEvent(i).EventConcept];
-    end
-    set(handles.ListBoxComments, 'string', Temp);    
+    %%%TODO Temp = cell(1, length(handles.ScoredEvent));
+    %%%TODO for i=1:length(handles.ScoredEvent)
+    %%%TODO    Temp1 = fix(handles.ScoredEvent(i).Start / 30) + 1;
+    %%%TODO    Temp{i}= [num2str(Temp1) ' - ' datestr(handles.ScoredEvent(i).Start/86400,'HH:MM:SS - ') handles.ScoredEvent(i).EventConcept];
+    %%%TODO end
+    %%%TODO set(handles.ListBoxComments, 'string', Temp);   %%% TODO 
     
-    % Plot histogram  TODO: extract into another function
-    if hasSleepStages
-         axes(handles.axes2)
-         cla
-         hold off    
-         plot(handles.SleepStages, 'LineWidth', 1.5, 'color','k');
-         hold on
-         set(handles.axes2,'xTick',[0 length(handles.SleepStages)],'xlim',[0 length(handles.SleepStages)],'xticklabel',''...
-             ,'fontweight','bold','yTick',[0:5],'ylim',[-0.5 5.5],'color',[205 224 247]/255,'yTickLabel',{'R','','N3','','N1','W'})
-         hold on
-     
-         % Higlight current window in historgram
-         epoch_width = get(handles.PopMenuWindowTime,'Value');
-         epoch_width = handles.epoch_menu_values(epoch_width);
-         epoch_width= max(epoch_width,handles.minimum_cursor_width);
-         x = [-1 -1 1 1 -1]*epoch_width/2+2+epoch_width/2;
-         y = [0 5 5 0 0];
-     
-         handles.LineSleepStage =  fill(x,y,'r','EdgeColor', 'r','FaceAlpha',0.5);
-         hold off
+    % Plot histogram
+    if handles.hasSleepStages %%% TODO
+        handles = plotHistogram(hObject, handles);
+    else
+        % turn off histogram
+        turnOffHistogram(handles)
     end
     
     % Record xml load
@@ -1484,7 +1533,6 @@ else
     if handles.XML_LOADED == 0
     end
 end
-
 
 %------------------------------------------------ figure1_WindowKeyPressFcn
 % --- Executes on key press with focus on figure1 or any of its controls.
@@ -1597,7 +1645,7 @@ elseif currentCharacter == handles.RIGHT_ARROW_KEY
         
         set(handles.SliderTime,'value',fix(Value+WindowTime));
         
-        if handles.FlagAnn
+        if handles.hasAnnotation
             % find the closest comments
             Temp=[];
             for i=1:length(handles.ScoredEvent)
@@ -1629,7 +1677,7 @@ elseif currentCharacter == handles.LEFT_ARROW_KEY
     if and(Value>=WindowTime, Value >=0)
         set(handles.SliderTime,'value',fix(Value-WindowTime));
         
-        if handles.FlagAnn
+        if handles.hasAnnotation
             % find the closest comments
             Temp=[];
             for i=1:length(handles.ScoredEvent)
@@ -1691,7 +1739,7 @@ if (Loc(3)>yLim(1) & Loc(3)<yLim(2) & Loc(1)>xLim(1) & Loc(1)<xLim(2))
     end
     set(handles.SliderTime,'value',Time);
     
-    if handles.FlagAnn
+    if handles.hasAnnotation
         % find the closest comments
         Temp=[];
         for i=1:length(handles.ScoredEvent)
@@ -1903,7 +1951,7 @@ if handles.EDF_LOADED == 1
         
         set(handles.SliderTime,'value',fix(Value+WindowTime));
         
-        if handles.FlagAnn
+        if handles.hasAnnotation
             % find the closest comments
             %%% change variable 'Temp' to reflect the meaning
             Temp=[];
@@ -1946,7 +1994,7 @@ if handles.EDF_LOADED == 1
     if and(Value>=WindowTime, Value >=0)
         set(handles.SliderTime,'value',fix(Value-WindowTime));
         
-        if handles.FlagAnn
+        if handles.hasAnnotation
             % find the closest comments
             Temp=[];
             for i=1:length(handles.ScoredEvent)
@@ -1972,7 +2020,6 @@ function pb_GoToStart_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-
 if handles.EDF_LOADED == 1
     % Get display epoch width
     epochPopupIndex = get(handles.PopMenuWindowTime,'value');
@@ -1987,7 +2034,7 @@ if handles.EDF_LOADED == 1
     set(handles.SliderTime,'value',Value);
     
     % Set annotations
-    if handles.FlagAnn
+    if handles.hasAnnotation
         % find the closest comments
         Temp=[];
         for i=1:length(handles.ScoredEvent)
@@ -2025,7 +2072,7 @@ if handles.EDF_LOADED == 1
     set(handles.SliderTime,'value',Value);
     
     % Set annotations
-    if handles.FlagAnn
+    if handles.hasAnnotation
         % find the closest comments
         Temp=[];
         for i=1:length(handles.ScoredEvent)
@@ -2132,6 +2179,52 @@ function pmAnnotations_Callback(hObject, eventdata, handles)
 
 % Hints: contents = cellstr(get(hObject,'String')) returns pmAnnotations contents as cell array
 %        contents{get(hObject,'Value')} returns selected item from pmAnnotations
+% set(hObject, 'String', {'Red', 'Green', 'White'});
+
+% display selected item:
+% set(hObject, 'Value', 1);
+set(handles.ListBoxComments, 'string', '');
+categories = handles.availableEventTypes;
+disp(categories);
+index_selected = get(hObject, 'Value');
+disp(sprintf('selected value: %d', index_selected));
+values_selected = {};
+for i = 1:length(index_selected)
+    values_selected{end+1} = categories{index_selected(i)};
+end
+disp('----------------------------------')
+disp(values_selected)
+disp('----------------------------------')
+
+Temp = {};
+handles.eventIndexInCategory(1) = 1;
+j = 2;
+for i=1:length(handles.ScoredEvent)
+    % if event is one of the selected values
+    if i == 1
+        Temp1 = fix(handles.ScoredEvent(i).Start / 30) + 1;
+        Temp{end+1}= [num2str(Temp1) ' - ' datestr(handles.ScoredEvent(i).Start/86400,'HH:MM:SS - ') handles.ScoredEvent(i).EventConcept, 'EventNumber #', num2str(i)];
+    end
+    eventConcept = handles.ScoredEvent(i).EventConcept;
+    if isKey(handles.eventMap, eventConcept)
+        eventtype = handles.eventMap(eventConcept);
+        if ~isempty(eventtype) & ismember(eventtype, values_selected)
+            Temp1 = fix(handles.ScoredEvent(i).Start / 30) + 1;
+            Temp{end+1}= [num2str(Temp1) ' - ' datestr(handles.ScoredEvent(i).Start/86400,'HH:MM:SS - ') handles.ScoredEvent(i).EventConcept, 'EventNumber #', num2str(i)];
+            handles.eventIndexInCategory(j) = i;
+            j = j + 1;
+        end
+    end
+end
+disp(sprintf('list box list size: %d', length(handles.eventIndexInCategory)));
+
+if ~isempty(Temp)
+    set(handles.ListBoxComments, 'string', Temp, 'value', 1);
+else
+    set(handles.ListBoxComments, 'string', 'No events in this category');
+end
+disp(sprintf('Number of list item: # %d', numel(get(handles.ListBoxComments, 'string'))));
+guidata(hObject,handles)
 
 
 % --- Executes during object creation, after setting all properties.
@@ -2145,3 +2238,124 @@ function pmAnnotations_CreateFcn(hObject, ~, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+
+% ========================= Helper Functions =====================================
+% ========================= By Wei Wang, 2015 ====================================
+function handles = clearOpenCache(handles) 
+    handles.hasSleepStages = 0;    
+    handles.eventIndexInCategory = [];
+    % clear pmAnnotations list box
+    
+function handles = turnOffHistogram(handles)
+%Do not show histogram
+    % focus on axes2
+    axes(handles.axes2)
+    % reset axes
+    cla reset
+    % clear x/y tick labels
+%     set(gca,'xtick',[])
+%     set(gca,'xticklabel',[])
+%     set(gca, 'ytick', [])
+%     set(gca, 'yticklabel', [])
+    hold off
+
+function handles = plotHistogram(hObject, handles)
+% plot histogram according to the configuration, refactored by wei, 2015-1-14
+% global hasSleepStages;
+    axes(handles.axes2)
+    cla
+    hold off      
+    plot(handles.SleepStages, 'LineWidth', 1.5, 'color','k');
+    hold on
+    set(handles.axes2,'xTick',[0 length(handles.SleepStages)],'xlim',[0 length(handles.SleepStages)],'xticklabel',''...
+        ,'fontweight','bold','yTick',[0:5],'ylim',[-0.5 5.5],'color',[205 224 247]/255,'yTickLabel',{'R','','N3','','N1','W'})
+    hold on
+    
+    % Higlight current window in historgram
+    epoch_width = get(handles.PopMenuWindowTime,'Value');
+    epoch_width = handles.epoch_menu_values(epoch_width);
+    epoch_width= max(epoch_width,handles.minimum_cursor_width);
+    x = [-1 -1 1 1 -1]*epoch_width/2+2+epoch_width/2;
+    y = [0 5 5 0 0];
+    
+    handles.LineSleepStage =  fill(x,y,'r','EdgeColor', 'r','FaceAlpha',0.5);
+    guidata(hObject, handles);
+    hold off
+    
+function [eventTypes, events, stages]=loadMappingFile(mappingFile)
+%loadMappingFile Load PSG annotation event mapping. To be deleted: in
+%loadPSGAnnotationClass
+%   Read from csv, and output list of eventTypes, events and stages
+events = [];
+stages = [];
+eventTypes = [];
+try
+   fid = fopen(mappingFile, 'r') ;
+   tline = fgetl(fid);
+   while ischar(tline)
+       % use two "%*s" because in some csv file, the fourth(last) column
+       % contains ',' which is the delimiter in csv file
+       line = textscan(tline, '%s %s %s %*s %*s', 'delimiter', ',', 'CollectOutput', false);       
+       eventType = line{1}{1};
+       eventConcept = line{3}{1};
+       if strcmp(eventType, 'EventType') == 0
+           eventTypes{end+1} = eventType;
+       end
+       if strcmp(eventType, 'EpochLength') == 0 & strcmp(eventType, 'EventType') == 0
+           events{end+1} = eventConcept;
+           if strcmp(eventType, 'Staging') == 1
+               stages{end+1} = eventConcept;
+           end
+       end
+       tline = fgetl(fid);
+   end
+
+   events = unique(events);
+   stages = unique(stages);
+   eventTypes = unique(eventTypes);
+   
+   fclose(fid);
+catch exception
+    disp(exception)
+    events = [];
+    stages = [];
+    eventTypes = [];
+end
+
+function msg=showErrorMessages(errroList) 
+    % For EDF error handling
+    errMap = containers.Map('KeyType', 'char', 'ValueType', 'char');
+    for i=1:length(errroList)
+        fields = parseLine(errroList{i});
+        %disp('===============================')
+        if isKey(errMap, fields{1})
+            errMap(fields{1}) = [errMap(fields{1}), '    ->', fields{2}, char(10)];
+            %disp(errMap(fields{1}));
+        else 
+            %errMap(fields{1}) = [fields{1}, char(10), '    ->', fields{2}, char(10)];
+            errMap(fields{1}) = [fields{1}, char(10), fields{2}, char(10)];
+            %disp(errMap(fields{1}));
+        end
+    end
+    result = values(errMap);
+    msg = {};
+    for i=1:length(result)
+        msg{end+1} = result{i};
+    end
+    disp('----------------------')
+    for i=1:length(msg)
+        disp(msg{i})
+    end
+
+    
+function output=parseLine(line)
+    output = {};
+    message = strsplit(line, ',');
+    msgSize = length(message);
+    if msgSize == 2
+        output = message;
+    elseif msgSize == 1
+        output = {message{1}, ''};
+    end    
+
+% ========================= Helper Functions END =================================

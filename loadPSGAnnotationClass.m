@@ -12,12 +12,18 @@ classdef loadPSGAnnotationClass
         % Input
         fileName = ''; % eg: '123.edf'   
         vendorName = ''; % eg: 'Embla'
-        sleepStageValues = [];
+        mappingFn = '';
+        % map <ScoredEvent.EventConcept, ScoredEvent.EventType>
+        eventMap = containers.Map('KeyType', 'char', 'ValueType', 'char');
+        sleepStageValues = []; %%% TODO issue, 2015-2-18
+        annotationType = ''; % eg: 'PSGAnnotation', 'CMPStudyConfig'
+        isSDO = 0;
         
         % Optional Parameters
         errMsg = {};
         % Error list
         errList = {};
+        errMap = containers.Map('KeyType', 'char', 'ValueType', 'char');
     end
     %------------------------------------------------- Dependent Properties
     properties (Dependent = true)        
@@ -32,11 +38,10 @@ classdef loadPSGAnnotationClass
     end
     %------------------------------------------------- Protected Properties
     properties (Access = protected)  
-        mappingFn = '';
+%         mappingFn = '';
         AnnotationType = ''; % eg: 'PSGAnnotation'
         EventConcepts = [];
         EventStages = [];
-%         eventErrMsg = ''; % use a better structure
         
         % Lights off/on text
         lightsOffText = 'Lights Off';
@@ -61,11 +66,18 @@ classdef loadPSGAnnotationClass
                 fprintf('obj = loadPSGAnnotationClass (filename)') % (fileName) to (filename)
             end 
         end
+        
+        %---------------------------------------------------------
+        %available event names for public usage
+        function eventTypeList = availableEventNames(obj)
+            % remove stages:
+            eventTypeList = obj.EventTypesP; %%% Added unique func, TODO
+        end
         %--------------------------------------------------------- loadFile
         function obj = loadFile(obj)
             % Load Grass file
             fileName = obj.fileName;
-            fid = fopen(fileName);           
+            fid = fopen(fileName);      
             
             % Process if file is open
             if fid > 0
@@ -74,6 +86,11 @@ classdef loadPSGAnnotationClass
                 msg = sprintf('Could not open %s', fileName);
                 error(msg);
             end
+            
+            %----------------------------------------------- Resolve 'SDO'
+            % Temp = fread(fid,[1 inf],'uint8'); % not efficient
+            obj.isSDO = strfind(fileTxt,'SDO:');
+            %-----------------------------------------------------
             
             % Pass loaded information to object
             try
@@ -120,16 +137,24 @@ classdef loadPSGAnnotationClass
                 EpochLength = str2double(Temp.item(0).getTextContent);
                 
                 TempVendor = xmldoc.getElementsByTagName('SoftwareVersion');
-                obj.vendorName = TempVendor.item(0).getTextContent;
-                if obj.vendorName == 'Embla'
-                    obj.mappingFn = 'mapping-Embla.csv';
-                end
-                if obj.vendorName == 'Compumedics'
-                    obj.mappingFn = 'mapping-CHAT.csv';
+                obj.vendorName = TempVendor.item(0).getTextContent;                               
+                
+                %%% TODO: should not hard code mapping file name
+                %%% TODO: design later
+                if ~isempty(obj.isSDO)
+                    obj.mappingFn = 'configuration/mapping-SDO.csv';
+                else
+                    if obj.vendorName == 'Embla'
+                        obj.mappingFn = 'configuration/mapping-Embla.csv';
+                    end
+                    if obj.vendorName == 'Compumedics'
+%                         obj.mappingFn = 'configuration/mapping-CHAT.csv';
+                        obj.mappingFn = 'configuration/mapping-Compumedics.csv';
+                    end
                 end
                 % Loading mapping file into obj.EventConcepts,
                 % obj.EventStages array
-                [obj.EventConcepts, obj.EventStages] = loadPSGAnnotationClass.testLoadCSV(obj.mappingFn);
+                [obj.eventMap, obj.EventConcepts, obj.EventStages] = loadPSGAnnotationClass.testLoadCSV(obj.mappingFn);  %%%TODO
 
                 events = xmldoc.getElementsByTagName('ScoredEvent');
                 % Add check code to deal with the missing subfield(Start/Duration, etc)
@@ -143,7 +168,8 @@ classdef loadPSGAnnotationClass
                         'SpO2Baseline', [], ...
                         'SpO2Nadir', [] ...
                     );
-                    % Default sleep stage name array
+                    % Default sleep stage name array. To be improved
+%                     stagesNameVector = obj.EventStages;
                     stagesNameVector = readSROevents();
                     for i = 0 : events.getLength - 1
                         eventConceptText = '';
@@ -158,12 +184,15 @@ classdef loadPSGAnnotationClass
                         try
                             eventConceptNode = events.item(i).getElementsByTagName('EventConcept');
                             eventConceptText = char(eventConceptNode.item(0).getTextContent);
+                            % disp(eventConceptText);
                             % Check if EventConcept contains these stages:
                             eventIndex = find(ismember(obj.EventStages, eventConceptText), 1);
                             if ~isempty(eventIndex)
                                 SleepStageNames{end+1} = eventConceptText;
                             end
-                            Temp = strfind(eventConceptText,'SRO:SpO2Desaturation'); % change findstr to strfind
+                            % Temp = strfind(eventConceptText,'SRO:SpO2Desaturation'); % change findstr to strfind
+                            Temp = strfind(eventConceptText,'Desaturation');
+%                             Temp = strfind(eventConceptText,'SRO:SpO2Desaturation');
                             if ~isempty(Temp)
                                 hasDesaturation = 1;
                                 % change str2num to str2double todo
@@ -236,7 +265,11 @@ classdef loadPSGAnnotationClass
                             if i == 0
                                 ScoredEvent(1) = ithScoredEvent;
                             else
+                                % if this event is stage event, then do not
+                                % include in the handles.ScoredEvent list
+%%%                                 if ~obj.isStageEvent(ithScoredEvent)
                                 ScoredEvent(end+1) = ithScoredEvent;
+%%%                                 end
                             end                            
                         end   
                         %------------------------------ End
@@ -264,7 +297,8 @@ classdef loadPSGAnnotationClass
                 isValid = 0;
                 eventErrMsg = strcat(eventErrMsg, 'Duration empty;');
             end
-            if strcmp(eventStruct.EventConcept, 'SRO:SpO2Desaturation')
+            % if strcmp(eventStruct.EventConcept, 'SRO:SpO2Desaturation')
+            if strcmp(eventStruct.EventConcept, 'Desaturation')
                 if isempty(eventStruct.SpO2Nadir)
                     isValid = 0;
                     eventErrMsg = strcat(eventErrMsg, 'SpO2Nadir empty;');
@@ -283,14 +317,26 @@ classdef loadPSGAnnotationClass
             %Error logging
             %   message, the error message to be displayed
             %   eventNumber, the event number where the error occurred                        
-            errmsg = sprintf('ScoredEvent-%0.0f: "%s"\n', eventNumber, message);  
-            fprintf(errmsg);
-            if isempty(obj.errList)
-                obj.errList{1} = errmsg;
-            else
-                obj.errList{end+1} = errmsg;
+%              errmsg = sprintf('ScoredEvent-%0.0f: "%s"\n', eventNumber, message);  
+%              fprintf(errmsg);
+%              if isempty(obj.errList)
+%                  obj.errList{1} = errmsg;
+%              else
+%                  obj.errList{end+1} = errmsg;
+%              end
+              if isKey(obj.errMap, message)
+                  obj.errMap(message) = [obj.errMap(message), ', ', num2str(eventNumber)];
+              else 
+                  obj.errMap(message) = [message, char(10), '  --> EventNumber: ', num2str(eventNumber)];
+              end
+        end
+        
+        function isStaging = isStageEvent(obj, scoredEvent)
+            isStaging = 0;
+            eventIndex = find(ismember(obj.EventStages, scoredEvent.EventConcept), 1);
+            if eventIndex
+                isStaging = 1;
             end
-%             errmsg = '>>> (Error) ScoredEvent-' + eventNumber + ': "' + message +'"\n';
         end
     end
     %---------------------------------------------------- Private functions
@@ -341,6 +387,7 @@ classdef loadPSGAnnotationClass
 % %             disp(errmsg)
 % %             errmsg = '>>> (Error) ScoredEvent-' + eventNumber + ': "' + message +'"\n';
 %         end
+                
         %--------------------------------------------- Read in Events(json)
         function events=readMapConfig(fname)
         % 2014-12-3, Read PSG configuration file in the default directory
@@ -371,10 +418,11 @@ classdef loadPSGAnnotationClass
             end
         end
         %--------------------------------------------- Read in Events(csv)
-        function [events, stages]=testLoadCSV(mappingFile)
+        function [eventMap, events, stages]=testLoadCSV(mappingFile)
             %testLoadCSV Load PSG annotation event mapping
             %   Read from csv, and output list of events and stages
             %   check loading csv
+            eventMap = containers.Map('KeyType', 'char', 'ValueType', 'char');
             events = [];
             stages = [];
             try
@@ -386,12 +434,17 @@ classdef loadPSGAnnotationClass
                line = textscan(tline, '%s %s %s %*s %*s', 'delimiter', ',', 'CollectOutput', false);       
                eventType = line{1}{1};
                eventConcept = line{3}{1};
+               
                if strcmp(eventType, 'EpochLength') == 0 & strcmp(eventType, 'EventType') == 0
-                    events{end+1} = eventConcept;
-                    if strcmp(eventType, 'Staging') == 1
-                        stages{end+1} = eventConcept;
-                    end
+                   events{end+1} = eventConcept;
+                   if ~isKey(eventMap, eventConcept)
+                       eventMap(eventConcept) = eventType;
+                   end
+                   if strcmp(eventType, 'Staging') == 1 | strcmp(eventType, 'Sleep Staging') == 1
+                       stages{end+1} = eventConcept;
+                   end
                end
+               
                tline = fgetl(fid);
             end
 
@@ -401,7 +454,16 @@ classdef loadPSGAnnotationClass
             fclose(fid);
             catch exception
                 disp(exception)
+                events = [];
+                stages = [];
             end
+            if ~isempty(stages)
+                %handles.hasSleepStages = 1;
+            end
+        end   
+        %--------------------------------------------- set mapping file
+        function setMappingFile()
+            
         end
         %---------------------------------------------------- GetEventTimes  
         function value = GetEventTimes(eventLabel, EventList, EventStart)
