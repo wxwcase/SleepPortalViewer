@@ -1,16 +1,22 @@
-function StartMe_cmdPars(edfName, edfPath, xmlName, xmlPath)
+function StartMe_cmdPars(varargin) %varargin
+%varargin: (edfPath, edfName, xmlPath, xmlName)
     
     global needOpenDialog;
-    needOpenDialog = logical(0);
-    
-    global EdfFilePath;
-    global EdfFileName;
+    global FilePath;
+    global FileName;
     global XmlFilePath;
     global XmlFileName;
-    EdfFilePath = edfName;
-    EdfFileName = edfPath;
-    XmlFilePath = xmlName;
-    XmlFileName = xmlPath;
+    
+    if isempty(varargin)
+        needOpenDialog = true;
+    elseif length(varargin) == 2
+        needOpenDialog = false;
+        FilePath = varargin{1};
+        FileName = varargin{2};
+    elseif length(varargin) > 2
+            XmlFilePath = varargin{3};
+            XmlFileName = varargin{4};
+    end
     
     EDF_View({})
 end
