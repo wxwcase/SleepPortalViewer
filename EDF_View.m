@@ -1397,10 +1397,20 @@ else
     clearOpenCache;
 end
 
+global needOpenDialog;
+global XmlFilePath;
+global XmlFileName;
+
 %[Original] Temp; Temp => EdfFileName
 EdfFileName = handles.FileName;
 EdfFileName([-3:0] + end) = [];
-[FileNameAnn, FilePath] = uigetfile([EdfFileName '*.xml'],'Open XML File');
+if needOpenDialog
+    [FileNameAnn, FilePath] = uigetfile([EdfFileName '*.xml'],'Open XML File');
+else
+    FileNameAnn = XmlFileName;
+    FilePath = XmlFilePath;
+end
+
 if FileNameAnn == 0 & FilePath == 0
     return
 end

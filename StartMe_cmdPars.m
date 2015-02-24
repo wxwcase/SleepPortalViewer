@@ -14,6 +14,7 @@ function StartMe_cmdPars(varargin) %varargin
         FilePath = varargin{1};
         FileName = varargin{2};
     elseif length(varargin) == 4
+        needOpenDialog = false;
         FilePath = varargin{1};
         FileName = varargin{2};
         XmlFilePath = varargin{3};
