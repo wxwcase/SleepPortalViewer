@@ -255,6 +255,8 @@ function MenuOpenEDF_Callback(hObject, eventdata, handles)
 %%% 1. If handles.EDF_CHECK == 0, disable gui compoenent that calls
 %%%     responsible callbacks
 %%% 2. Using configuration file to do the tasks
+handles = guidata(hObject);
+
 global needOpenDialog;
 global FilePath;
 global FileName;
@@ -1388,6 +1390,8 @@ function MenuOpenXML_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % if EDF file check failed, then return
+handles = guidata(hObject);
+
 if handles.EDF_CHECK == 0 
     return
 else
