@@ -94,7 +94,7 @@ handles.CONTROL_MODIFIER = 'control';
 
 
 % Load and display button 
-%Coloca una imagen en cada botón
+%Coloca una imagen en cada botÃ³n
 [a,map]=imread('start.jpg');
 [r,c,d]=size(a); 
 x=ceil(r/30); 
@@ -231,6 +231,8 @@ function MenuOpenEDF_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Openfile start path
+handles = guidata(hObject);
+
 openStartFolder = handles.openStartFolder;
 fileSpec = strcat(openStartFolder,'*.edf');
 [FileName, FilePath]=uigetfile(fileSpec,'Open EDF File');
@@ -1353,6 +1355,8 @@ function MenuOpenXML_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % if EDF file check failed, then return
+handles = guidata(hObject);
+
 if handles.EDF_CHECK == 0 
     return
 end
