@@ -1392,13 +1392,15 @@ function MenuOpenXML_Callback(hObject, eventdata, handles)
 % if EDF file check failed, then return
 handles = guidata(hObject);
 
-if handles.EDF_CHECK == 0 
+if handles.EDF_CHECK == 0
     return
 else
     % should clean last open file cache, wei wang, Jan, 15, 2015
     %handles.hasSleepStages = 0;    
     %handles.eventIndexInCategory = [];
     clearOpenCache;
+    set(handles.pmAnnotations, 'string', ''); 
+    set(handles.ListBoxComments, 'string', '');
 end
 
 global needOpenDialog;

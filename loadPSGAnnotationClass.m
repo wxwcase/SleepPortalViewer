@@ -144,10 +144,10 @@ classdef loadPSGAnnotationClass
                 if ~isempty(obj.isSDO)
                     obj.mappingFn = 'configuration/mapping-SDO.csv';
                 else
-                    if obj.vendorName == 'Embla'
+                    if strcmp(obj.vendorName, 'Embla')
                         obj.mappingFn = 'configuration/mapping-Embla.csv';
                     end
-                    if obj.vendorName == 'Compumedics'
+                    if strcmp(obj.vendorName, 'Compumedics')
 %                         obj.mappingFn = 'configuration/mapping-CHAT.csv';
                         obj.mappingFn = 'configuration/mapping-Compumedics.csv';
                     end
@@ -170,7 +170,14 @@ classdef loadPSGAnnotationClass
                     );
                     % Default sleep stage name array. To be improved
 %                     stagesNameVector = obj.EventStages;
-                    stagesNameVector = readSROevents();
+                    if isempty(obj.isSDO)
+                        % SRO
+                        stagesNameVector = readSROevents();
+                    else
+                        % SDO
+                        stagesNameVector = obj.EventStages;
+                    end
+                    
                     for i = 0 : events.getLength - 1
                         eventConceptText = '';
                         nadirNum = [];
@@ -456,9 +463,6 @@ classdef loadPSGAnnotationClass
                 disp(exception)
                 events = [];
                 stages = [];
-            end
-            if ~isempty(stages)
-                %handles.hasSleepStages = 1;
             end
         end   
         %--------------------------------------------- set mapping file
