@@ -11,14 +11,14 @@ function StartMe_cmdPars(varargin) %varargin
         needOpenDialog = true;
     elseif length(varargin) == 2
         needOpenDialog = false;
-        FilePath = varargin{1};
-        FileName = varargin{2};
+        FileName = varargin{1};
+        FilePath = varargin{2};
     elseif length(varargin) == 4
         needOpenDialog = false;
-        FilePath = varargin{1};
-        FileName = varargin{2};
-        XmlFilePath = varargin{3};
-        XmlFileName = varargin{4};
+        FileName = varargin{1};
+        FilePath = varargin{2};
+        XmlFileName = varargin{3};
+        XmlFilePath = varargin{4};
     end
     
     EDF_View({})
