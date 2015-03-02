@@ -1434,9 +1434,6 @@ try
     handles.SleepStages = annObj.sleepStageValues; 
     
     if ~isempty(annObj.errMap) %annObj.errList
-%           fprintf('Error list length: %0.0f\n', length(annObj.errList));
-%           dispErr = strjoin(annObj.errList, '\n');
-%           errordlg(dispErr, 'XML Event Error', 'modal');
         % display errors
           result = values(annObj.errMap);
           msg = {};
@@ -1451,13 +1448,12 @@ try
     end
     
     if ~isempty(annObj.mappingFn)
-%       disp(annObj.mappingFn);
         % eventMap: a dictionary containing {'eventType', {event cell
         % array}} entries
         [eventMap, ~, ~] = loadPSGAnnotationClass.testLoadCSV(annObj.mappingFn);
         handles.eventMap = eventMap;
         availableEventNames = annObj.availableEventNames;
-        availableEventTypes = {};
+        availableEventTypes = {'All'};
         for i = 1:length(availableEventNames)
             name = availableEventNames(i);
             if isKey(eventMap, name)% & ~find(ismember(annObj.EventStages, name), 1)
@@ -1521,16 +1517,16 @@ if ~(sum(FileNameAnn == 0)) % if this file name is not empty string, use ~isempt
     end
     
     % Create list box contents TODO: extract into another function
-    % ListBox Comments annotation
-    %%%TODO Temp = cell(1, length(handles.ScoredEvent));
-    %%%TODO for i=1:length(handles.ScoredEvent)
-    %%%TODO    Temp1 = fix(handles.ScoredEvent(i).Start / 30) + 1;
-    %%%TODO    Temp{i}= [num2str(Temp1) ' - ' datestr(handles.ScoredEvent(i).Start/86400,'HH:MM:SS - ') handles.ScoredEvent(i).EventConcept];
-    %%%TODO end
-    %%%TODO set(handles.ListBoxComments, 'string', Temp);   %%% TODO 
+    % ListBox Comments annotation %%% TODO
+    Temp = cell(1, length(handles.ScoredEvent));
+    for i=1:length(handles.ScoredEvent)
+       Temp1 = fix(handles.ScoredEvent(i).Start / 30) + 1;
+       Temp{i}= [num2str(Temp1) ' - ' datestr(handles.ScoredEvent(i).Start/86400,'HH:MM:SS - ') handles.ScoredEvent(i).EventConcept];
+    end
+    set(handles.ListBoxComments, 'string', Temp);
     
     % Plot histogram
-    if handles.hasSleepStages %%% TODO
+    if handles.hasSleepStages
         handles = plotHistogram(hObject, handles);
     else
         % turn off histogram
@@ -2203,37 +2199,48 @@ set(handles.ListBoxComments, 'string', '');
 categories = handles.availableEventTypes;
 disp(categories);
 index_selected = get(hObject, 'Value');
-disp(sprintf('selected value: %d', index_selected));
-values_selected = {};
-for i = 1:length(index_selected)
-    values_selected{end+1} = categories{index_selected(i)};
-end
-disp('----------------------------------')
-disp(values_selected)
-disp('----------------------------------')
-
-Temp = {};
-handles.eventIndexInCategory(1) = 1;
-j = 2;
-for i=1:length(handles.ScoredEvent)
-    % if event is one of the selected values
-    if i == 1
-        Temp1 = fix(handles.ScoredEvent(i).Start / 30) + 1;
-        Temp{end+1}= [num2str(Temp1) ' - ' datestr(handles.ScoredEvent(i).Start/86400,'HH:MM:SS - ') handles.ScoredEvent(i).EventConcept, 'EventNumber #', num2str(i)];
+if index_selected(1) == 1
+    Temp = cell(1, length(handles.ScoredEvent));
+    handles.eventIndexInCategory(1) = 1;
+    for i=1:length(handles.ScoredEvent)
+       Temp1 = fix(handles.ScoredEvent(i).Start / 30) + 1;
+       Temp{i}= [num2str(Temp1) ' - ' datestr(handles.ScoredEvent(i).Start/86400,'HH:MM:SS - ') handles.ScoredEvent(i).EventConcept];
+       handles.eventIndexInCategory(i) = i;
     end
-    eventConcept = handles.ScoredEvent(i).EventConcept;
-    if isKey(handles.eventMap, eventConcept)
-        eventtype = handles.eventMap(eventConcept);
-        if ~isempty(eventtype) & ismember(eventtype, values_selected)
+%     set(handles.ListBoxComments, 'string', Temp);
+else
+    disp(sprintf('selected value: %d', index_selected));
+    values_selected = {};
+    for i = 1:length(index_selected)
+        values_selected{end+1} = categories{index_selected(i)}; % first index is 'All' events
+    end
+    disp('----------------------------------')
+    disp(values_selected)
+    disp('----------------------------------')
+
+    Temp = {};
+    handles.eventIndexInCategory(1) = 1;
+    j = 2;
+    for i=1:length(handles.ScoredEvent)
+        % if event is one of the selected values
+        if i == 1 % first event 'Record Start Time'
             Temp1 = fix(handles.ScoredEvent(i).Start / 30) + 1;
             Temp{end+1}= [num2str(Temp1) ' - ' datestr(handles.ScoredEvent(i).Start/86400,'HH:MM:SS - ') handles.ScoredEvent(i).EventConcept, 'EventNumber #', num2str(i)];
-            handles.eventIndexInCategory(j) = i;
-            j = j + 1;
+        end
+        eventConcept = handles.ScoredEvent(i).EventConcept;
+        if isKey(handles.eventMap, eventConcept)
+            eventtype = handles.eventMap(eventConcept);
+            if ~isempty(eventtype) & ismember(eventtype, values_selected)
+                Temp1 = fix(handles.ScoredEvent(i).Start / 30) + 1;
+                Temp{end+1}= [num2str(Temp1) ' - ' datestr(handles.ScoredEvent(i).Start/86400,'HH:MM:SS - ') handles.ScoredEvent(i).EventConcept, 'EventNumber #', num2str(i)];
+                handles.eventIndexInCategory(j) = i + 1;
+                j = j + 1;
+            end
         end
     end
 end
-disp(sprintf('list box list size: %d', length(handles.eventIndexInCategory)));
-
+    disp(sprintf('list box list size: %d', length(handles.eventIndexInCategory)));
+    
 if ~isempty(Temp)
     set(handles.ListBoxComments, 'string', Temp, 'value', 1);
 else
