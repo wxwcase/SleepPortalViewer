@@ -277,6 +277,8 @@ if FileName == 0 & FilePath == 0
     return
 end
 
+tic
+
 try
     belClass = BlockEdfLoadClass([FilePath FileName]);
     belClass = belClass.blockEdfLoad; 
@@ -463,6 +465,8 @@ if ~(length(FilePath)==1)
     % Let user know load has been completed
     set(handles.figure1,'pointer', 'arrow');
 end
+disp('Time opening EDF:');
+toc
 
 
 %--------------------------------------------- CreateListBoxEdfHeaderString
@@ -1264,7 +1268,6 @@ if get(handles.SliderTime, 'value') <= length(handles.SleepStages) - WindowTime
     guidata(hObject, handles);
 end
 
-
 %-------------------------------------------------- figure1_CloseRequestFcn
 % --- Executes when user attempts to close figure1.
 function figure1_CloseRequestFcn(hObject, eventdata, handles)
@@ -1335,8 +1338,6 @@ catch err
     % just close
 end
 
-
-
 %------------------------------------------------- EditEpochNumber_Callback
 function EditEpochNumber_Callback(hObject, eventdata, handles)
 % hObject    handle to EditEpochNumber (see GCBO)
@@ -1382,7 +1383,6 @@ handles = UpDatePlot(hObject,handles);
 
 guidata(hObject, handles);
 
-
 % ---------------------------------------------------- MenuOpenXML_Callback
 function MenuOpenXML_Callback(hObject, eventdata, handles)
 % hObject    handle to MenuOpenXML (see GCBO)
@@ -1421,6 +1421,8 @@ if FileNameAnn == 0 & FilePath == 0
     return
 end
 %%% structure to be considered
+
+tic % open xml performance test
 
 try 
     annObj = loadPSGAnnotationClass([FilePath, FileNameAnn]);    
@@ -1545,6 +1547,8 @@ else
     if handles.XML_LOADED == 0
     end
 end
+disp('Time opening XML: ');
+toc
 
 %------------------------------------------------ figure1_WindowKeyPressFcn
 % --- Executes on key press with focus on figure1 or any of its controls.
