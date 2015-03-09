@@ -1,5 +1,5 @@
 function StartMe_cmdPars(varargin) %varargin
-%varargin: (edfPath, edfName, xmlPath, xmlName)
+%varargin: (edfName, edfPath, xmlName, xmlPath)
     
     global needOpenDialog;
     global FilePath;

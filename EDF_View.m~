@@ -45,6 +45,7 @@ gui_State = struct('gui_Name',       mfilename, ...
     
 % End initialization code - DO NOT EDIT
 
+
 %------------------------------------------------------ EDF_View_OpeningFcn
 % --- Executes just before EDF_View is made visible.
 function EDF_View_OpeningFcn(hObject, eventdata, handles, varargin)
@@ -1218,16 +1219,22 @@ if handles.EDF_CHECK == 0
     return
 end
 
-Sel = get(hObject,'value');
-fprintf('listbox size: %d', length(handles.eventIndexInCategory));
-SelNum = handles.eventIndexInCategory(Sel);
-fprintf('Selected index: Sel#: %d\n',Sel);
-fprintf('selected event number: SelNum# %d\n', SelNum);
-fprintf('handles.ScoredEvent size: # %d\n', length(handles.ScoredEvent));
-fprintf('Sleep Stages Number: # %d\n', length(handles.SleepStages));
+%%% TODO: Can use 'listdlg()' function and a button to implement the
+%%% dropdown list to select event categories
 
+Sel = get(hObject,'value');
+disp(sprintf('listbox size: %d', length(handles.eventIndexInCategory)));
+SelNum = handles.eventIndexInCategory(Sel);
+disp(sprintf('Selected index: Sel#: %d',Sel));
+disp(sprintf('selected event number: SelNum# %d', SelNum));
+disp(sprintf('handles.ScoredEvent size: # %d', length(handles.ScoredEvent)));
+disp(sprintf('Sleep Stages Number: # %d', length(handles.SleepStages)));
+
+%[Original] Temp; Temp => popMenuWindowTime_value
 popMenuWindowTime_value = get(handles.PopMenuWindowTime, 'value');
+%[Original] Temp1; Temp1 => ListOfPopMenuWindowTimes
 ListOfPopMenuWindowTimes = get(handles.PopMenuWindowTime, 'string');
+%[Original] Temp; Temp => CurrentPopMenuWindowTime
 CurrentPopMenuWindowTime = ListOfPopMenuWindowTimes{popMenuWindowTime_value};
 WindowTime = str2num(CurrentPopMenuWindowTime(1:end-3));
 
@@ -1243,8 +1250,17 @@ if isfield(handles, 'ScoredEvent') % added check field(handles.ScoredEvent)
         Time = handles.ScoredEvent(SelNum).Start; %[Original]
     end
     set(handles.SliderTime,'value',fix(Time)); %[Original]
-    fprintf('Selected slider value: #: %d\n', get(handles.SliderTime, 'value'));
+    disp(sprintf('Selected slider value: #: %d', get(handles.SliderTime, 'value')));
 end
+
+%CurrentPopMenuWindowTime = WindowTime - handles.ScoredEvent(Sel).Duration; %
+
+%if CurrentPopMenuWindowTime > 0 %
+%    Time = handles.ScoredEvent(Sel).Start-CurrentPopMenuWindowTime/2;%
+%else
+%    Time = handles.ScoredEvent(Sel).Start;%
+%end
+%set(handles.SliderTime,'value',fix(Time));%
 
 if get(handles.SliderTime, 'value') <= length(handles.SleepStages) - WindowTime
     % Fixed bug: updataPlot error issue(sliderTime value exceeds sleepstages length)
@@ -1408,6 +1424,8 @@ if FileNameAnn == 0 & FilePath == 0
 end
 %%% structure to be considered
 
+tic % open xml performance test
+
 try 
     annObj = loadPSGAnnotationClass([FilePath, FileNameAnn]);    
     % annObj.loadFile process:
@@ -1418,9 +1436,6 @@ try
 	handles.ScoredEvent = annObj.ScoredEvent;
     handles.EpochLength = annObj.EpochLength;
     handles.SleepStages = annObj.sleepStageValues; 
-    disp(length(handles.ScoredEvent));
-    disp(handles.EpochLength);
-    disp(length(handles.SleepStages));
     
     if ~isempty(annObj.errMap) %annObj.errList
         % display errors
@@ -1431,20 +1446,20 @@ try
           end
           disp('----------------------')
           for i=1:length(msg)
-              disp(msg{i});
+              disp(msg{i})
           end
           errordlg(msg, 'XML Event Error', 'modal');
     end
-%     fprintf('Available event types: %s', annObj.availableEventTypes);
-    availableEventTypes = {'All'};
-    for i=1:length(annObj.availableEventTypes)
-        if ~isempty(annObj.availableEventTypes{i})
-            availableEventTypes{end+1} = annObj.availableEventTypes{i};
-        end
+    
+    if ~isempty(annObj.mappingFn)
+        % eventMap: a dictionary containing {'eventType', {event cell
+        % array}} entries
+        [eventMap, ~, ~] = loadPSGAnnotationClass.testLoadCSV(annObj.mappingFn);
+        handles.eventMap = eventMap;
+        availableEventTypes = ['All', annObj.availableEventTypes];
+        handles.availableEventTypes = availableEventTypes;
+        set(handles.pmAnnotations, 'string', availableEventTypes);    % record and show event types(in array)
     end
-    disp(availableEventTypes);
-    handles.availableEventTypes = availableEventTypes;
-    set(handles.pmAnnotations, 'string', availableEventTypes);    % record and show event types(in array)
     
     % Display basic info:
     numScoredEvents = length(annObj.ScoredEvent);
@@ -1526,6 +1541,8 @@ else
     if handles.XML_LOADED == 0
     end
 end
+disp('Time opening XML: ');
+toc
 
 %------------------------------------------------ figure1_WindowKeyPressFcn
 % --- Executes on key press with focus on figure1 or any of its controls.
@@ -2181,7 +2198,6 @@ categories = handles.availableEventTypes;
 disp(categories);
 index_selected = get(hObject, 'Value');
 if index_selected(1) == 1
-    % Selected 'All' category
     Temp = cell(1, length(handles.ScoredEvent));
     handles.eventIndexInCategory(1) = 1;
     for i=1:length(handles.ScoredEvent)
@@ -2191,7 +2207,7 @@ if index_selected(1) == 1
     end
 %     set(handles.ListBoxComments, 'string', Temp);
 else
-    fprintf('selected value: %d', index_selected);
+    disp(sprintf('selected value: %d', index_selected));
     values_selected = {};
     for i = 1:length(index_selected)
         values_selected{end+1} = categories{index_selected(i)}; % first index is 'All' events
@@ -2209,23 +2225,26 @@ else
             Temp1 = fix(handles.ScoredEvent(i).Start / 30) + 1;
             Temp{end+1}= [num2str(Temp1) ' - ' datestr(handles.ScoredEvent(i).Start/86400,'HH:MM:SS - ') handles.ScoredEvent(i).EventConcept, 'EventNumber #', num2str(i)];
         end
-        eventCategory = handles.ScoredEvent(i).EventType;
-        if ismember(eventCategory, values_selected)
-            Temp1 = fix(handles.ScoredEvent(i).Start / 30) + 1;
-            Temp{end+1}= [num2str(Temp1) ' - ' datestr(handles.ScoredEvent(i).Start/86400,'HH:MM:SS - ') handles.ScoredEvent(i).EventConcept, 'EventNumber #', num2str(i)];
-            handles.eventIndexInCategory(j) = i;
-            j = j + 1;
+        eventConcept = handles.ScoredEvent(i).EventConcept;
+        if isKey(handles.eventMap, eventConcept)
+            eventtype = handles.eventMap(eventConcept);
+            if ~isempty(eventtype) & ismember(eventtype, values_selected)
+                Temp1 = fix(handles.ScoredEvent(i).Start / 30) + 1;
+                Temp{end+1}= [num2str(Temp1) ' - ' datestr(handles.ScoredEvent(i).Start/86400,'HH:MM:SS - ') handles.ScoredEvent(i).EventConcept, 'EventNumber #', num2str(i)];
+                handles.eventIndexInCategory(j) = i + 1;
+                j = j + 1;
+            end
         end
     end
 end
-fprintf('list box list size: %d', length(handles.eventIndexInCategory));
+    disp(sprintf('list box list size: %d', length(handles.eventIndexInCategory)));
     
 if ~isempty(Temp)
     set(handles.ListBoxComments, 'string', Temp, 'value', 1);
 else
     set(handles.ListBoxComments, 'string', 'No events in this category');
 end
-fprintf('Number of list item: # %d', numel(get(handles.ListBoxComments, 'string')));
+disp(sprintf('Number of list item: # %d', numel(get(handles.ListBoxComments, 'string'))));
 guidata(hObject,handles)
 
 

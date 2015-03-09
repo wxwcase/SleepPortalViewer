@@ -45,8 +45,7 @@ classdef loadPSGAnnotationClass
         ScoredEventP                  % Scored event data structure list
         EventListP                    % List of events names(EventConcepts)
         EventTypesP                   % Unique event names(categories)
-        EventCategoryListP            % Event categories
-        EventCategoryP                % Unique event categories
+        EventCategoryP                % Event categories
         EventStartP                   % Event start list
         SleepStagesP                  % Sleep Stages list
         EpochLengthP                  % Epoch Length  
@@ -69,7 +68,7 @@ classdef loadPSGAnnotationClass
             eventNameList = obj.EventTypesP; %%% Added unique func, TODO
         end
         function eventTypeList = availableEventTypes(obj)
-            eventTypeList = obj.EventCategoryP;
+            eventTypeList =;
         end
         %--------------------------------------------------------- loadFile
         function obj = loadFile(obj)
@@ -108,11 +107,9 @@ classdef loadPSGAnnotationClass
             EventListP = arrayfun(eventListF,[1:length(ScoredEvent)],...
                 'UniformOutput', 0)';
             EventTypesP = unique(EventListP);
-            
             eventCategoryF = @(x)ScoredEvent(x).EventType;
-            EventCategoryListP = arrayfun(eventCategoryF,[1:length(ScoredEvent)],...
+            EventCategoryP = arrayfun(eventCategoryF,[1:length(ScoredEvent)],...
                 'UniformOutput', 0)';
-            EventCategoryP = unique(EventCategoryListP);
             
             eventStartF = @(x)ScoredEvent(x).Start;
             EventStartP = arrayfun(eventStartF,[1:length(ScoredEvent)],...
@@ -127,7 +124,6 @@ classdef loadPSGAnnotationClass
             obj.EventListP = EventListP;
             obj.EventTypesP = EventTypesP;
             obj.EventStartP = EventStartP;
-            obj.EventCategoryP = EventCategoryP;
             
             fid = fclose(fid);
         
@@ -147,6 +143,26 @@ classdef loadPSGAnnotationClass
                 
                 TempVendor = xmldoc.getElementsByTagName('SoftwareVersion');
                 obj.vendorName = TempVendor.item(0).getTextContent;                               
+                
+                %%% TODO: should not hard code mapping file name
+                %%% TODO: design later
+%                 if ~isempty(obj.isSDO)
+%                     obj.mappingFn = 'configuration/mapping-SDO.csv';
+%                 else
+%                     if strcmp(obj.vendorName, 'Embla')
+%                         obj.mappingFn = 'configuration/mapping-Embla.csv';
+%                     end
+%                     if strcmp(obj.vendorName, 'Compumedics')
+% %                         obj.mappingFn = 'configuration/mapping-CHAT.csv';
+%                         obj.mappingFn = 'configuration/mapping-Compumedics.csv';
+%                     end
+%                 end
+                % Loading mapping file into obj.EventConcepts,
+                % obj.EventStages array
+                % obj.EventConcepts, obj.EventStages are sets read from
+                % mapping file
+%                 [obj.eventMap, obj.EventConcepts, obj.EventStages] = ...
+%                     loadPSGAnnotationClass.testLoadCSV(obj.mappingFn);  %%%TODO
 
                 events = xmldoc.getElementsByTagName('ScoredEvent');
                 % Add check code to deal with the missing subfield(Start/Duration, etc)
@@ -188,13 +204,16 @@ classdef loadPSGAnnotationClass
                             
                             eventTypeNode = events.item(i).getElementsByTagName('EventType');
                             eventTypeText = char(eventTypeNode.item(0).getTextContent);
-                            obj.EventConcepts{end+1} = eventConceptText;
+                            obj.EventConcepts{end+1} = eventConcept;
                             if strcmp(eventTypeText, 'Staging') == 1 | strcmp(eventTypeText, 'Sleep Staging') == 1
-                                obj.EventStages{end+1} = eventConceptText;
-                                SleepStageNames{end+1} = eventConceptText;
+                                obj.EventStages{end+1} = eventConcept;
                             end
                             
                             % Check if EventConcept contains these stages:
+                            eventIndex = find(ismember(obj.EventStages, eventConceptText), 1);
+                            if ~isempty(eventIndex)
+                                SleepStageNames{end+1} = eventConceptText;
+                            end
                             Temp = strfind(eventConceptText,'Desaturation');
                             if ~isempty(Temp)
                                 hasDesaturation = 1;
@@ -320,6 +339,15 @@ classdef loadPSGAnnotationClass
         %-------------------------------------------- Log errors
         function obj = logErr(obj, message, eventNumber)
             %Error logging
+            %   message, the error message to be displayed
+            %   eventNumber, the event number where the error occurred                        
+%              errmsg = sprintf('ScoredEvent-%0.0f: "%s"\n', eventNumber, message);  
+%              fprintf(errmsg);
+%              if isempty(obj.errList)
+%                  obj.errList{1} = errmsg;
+%              else
+%                  obj.errList{end+1} = errmsg;
+%              end
               if isKey(obj.errMap, message)
                   obj.errMap(message) = [obj.errMap(message), ', ', num2str(eventNumber)];
               else 
