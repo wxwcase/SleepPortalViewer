@@ -184,7 +184,8 @@ classdef loadPSGAnnotationClass
                             if i ~= 0
                                 tmp = strsplit(eventConceptText, '|');
                                 eventConceptText = ['SRO:', tmp{2}];
-                                tooltip = [tmp{1}, '#', tmp{2}];
+                                tip = strsplit(tmp{1}, '');
+                                tooltip = [tmp{1}, '#'];
                             end
                             
                             eventTypeNode = events.item(i).getElementsByTagName('EventType');

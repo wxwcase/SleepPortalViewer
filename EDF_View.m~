@@ -1227,8 +1227,8 @@ fprintf('selected event number: SelNum# %d\n', SelNum);
 fprintf('handles.ScoredEvent size: # %d\n', length(handles.ScoredEvent));
 fprintf('Sleep Stages Number: # %d\n', length(handles.SleepStages));
 % Change tooltip
-
-set(handles.ListBoxComments, 'ToolTip', handles.ScoredEvent(SelNum).ToolTip);
+toolTip = [handles.ScoredEvent(SelNum).ToolTip, handles.Scored];
+set(handles.ListBoxComments, 'ToolTip', [toolTip]);
 
 popMenuWindowTime_value = get(handles.PopMenuWindowTime, 'value');
 ListOfPopMenuWindowTimes = get(handles.PopMenuWindowTime, 'string');
