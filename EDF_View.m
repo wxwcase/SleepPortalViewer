@@ -1217,9 +1217,10 @@ function ListBoxComments_Callback(hObject, eventdata, handles)
 if handles.EDF_CHECK == 0 
     return
 end
+handles = guidata(hObject); %%%
 
 Sel = get(hObject,'value');
-fprintf('listbox size: %d', length(handles.eventIndexInCategory));
+fprintf('listbox size: %d\n', length(handles.eventIndexInCategory));
 SelNum = handles.eventIndexInCategory(Sel);
 fprintf('Selected index: Sel#: %d\n',Sel);
 fprintf('selected event number: SelNum# %d\n', SelNum);
@@ -1414,13 +1415,14 @@ try
     %   1. Open file
     %   2. parseNodes, including check of tag existance
     %   3. validateEvents, validate fields and event names
+    annObj.errMap = containers.Map('KeyType', 'char', 'ValueType', 'char');
 	annObj = annObj.loadFile;
 	handles.ScoredEvent = annObj.ScoredEvent;
     handles.EpochLength = annObj.EpochLength;
     handles.SleepStages = annObj.sleepStageValues; 
-    disp(length(handles.ScoredEvent));
-    disp(handles.EpochLength);
-    disp(length(handles.SleepStages));
+    fprintf('Event Number: %d\n', length(handles.ScoredEvent));
+    fprintf('Epoch Length: %d\n', handles.EpochLength);
+    fprintf('Stage Number: %d\n', length(handles.SleepStages));
     
     if ~isempty(annObj.errMap) %annObj.errList
         % display errors
@@ -1500,9 +1502,11 @@ if ~(sum(FileNameAnn == 0)) % if this file name is not empty string, use ~isempt
     % Create list box contents TODO: extract into another function
     % ListBox Comments annotation %%% TODO
     Temp = cell(1, length(handles.ScoredEvent));
+    handles.eventIndexInCategory(1) = 1;
     for i=1:length(handles.ScoredEvent)
        Temp1 = fix(handles.ScoredEvent(i).Start / 30) + 1;
        Temp{i}= [num2str(Temp1) ' - ' datestr(handles.ScoredEvent(i).Start/86400,'HH:MM:SS - ') handles.ScoredEvent(i).EventConcept];
+       handles.eventIndexInCategory(i) = i;
     end
     set(handles.ListBoxComments, 'string', Temp);
     
@@ -2218,14 +2222,14 @@ else
         end
     end
 end
-fprintf('list box list size: %d', length(handles.eventIndexInCategory));
+fprintf('list box list size: %d\n', length(handles.eventIndexInCategory));
     
 if ~isempty(Temp)
     set(handles.ListBoxComments, 'string', Temp, 'value', 1);
 else
     set(handles.ListBoxComments, 'string', 'No events in this category');
 end
-fprintf('Number of list item: # %d', numel(get(handles.ListBoxComments, 'string')));
+fprintf('Number of list item: # %d\n', numel(get(handles.ListBoxComments, 'string')));
 guidata(hObject,handles)
 
 

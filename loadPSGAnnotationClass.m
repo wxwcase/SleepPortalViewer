@@ -5,9 +5,6 @@ classdef loadPSGAnnotationClass
         % Input
         fileName = ''; % eg: '123.edf'   
         vendorName = ''; % eg: 'Embla'
-%         mappingFn = '';
-        % map <ScoredEvent.EventConcept, ScoredEvent.EventType>
-%         eventMap = containers.Map('KeyType', 'char', 'ValueType', 'char');
         sleepStageValues = []; %%% TODO issue, 2015-2-18
         annotationType = ''; % eg: 'PSGAnnotation', 'CMPStudyConfig'
         isSDO = 0;
@@ -31,7 +28,6 @@ classdef loadPSGAnnotationClass
     end
     %------------------------------------------------- Protected Properties
     properties (Access = protected)  
-%         mappingFn = '';
         AnnotationType = ''; % eg: 'PSGAnnotation'
         EventConcepts = [];
         EventStages = [];
@@ -161,8 +157,6 @@ classdef loadPSGAnnotationClass
                         'SpO2Baseline', [], ...
                         'SpO2Nadir', [] ...
                     );
-                    % Default sleep stage name array. To be improved
-%                     stagesNameVector = obj.EventStages;
                     if isempty(obj.isSDO)
                         % SRO
                         stagesNameVector = readSROevents();
@@ -289,8 +283,12 @@ classdef loadPSGAnnotationClass
             %      eventNum is used for displaying error messages
             isValid = 1; % true
             eventErrMsg = '';
-            eventIndex = find(ismember(obj.EventConcepts, eventStruct.EventConcept), 1);
-            if isempty(eventIndex)
+%             eventIndex = find(ismember(obj.EventConcepts, eventStruct.EventConcept), 1);
+%             if isempty(eventIndex)
+%                 isValid = 0;
+%                 eventErrMsg = strcat(eventErrMsg, 'Event name not found;');
+%             end
+            if isempty(eventStruct.EventConcept)
                 isValid = 0;
                 eventErrMsg = strcat(eventErrMsg, 'Event name not found;');
             end
