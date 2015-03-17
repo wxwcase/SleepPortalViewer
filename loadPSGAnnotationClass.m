@@ -183,14 +183,19 @@ classdef loadPSGAnnotationClass
                             tooltip = '';
                             if i ~= 0
                                 tmp = strsplit(eventConceptText, '|');
-                                eventConceptText = ['SRO:', tmp{2}];
-                                tooltip = [tmp{1}, '#', tmp{2}];
+                                eventConceptText = tmp{2};
+                                tooltip = tmp{1};
                             end
                             
                             eventTypeNode = events.item(i).getElementsByTagName('EventType');
                             eventTypeText = char(eventTypeNode.item(0).getTextContent);
+                            if i~= 0
+                                tmp = strsplit(eventTypeText, '|');
+                                eventTypeText = tmp{2};
+                                typeTooltip = tmp{1};
+                            end
                             obj.EventConcepts{end+1} = eventConceptText;
-                            if strcmp(eventTypeText, 'Staging') == 1 | strcmp(eventTypeText, 'Sleep Staging') == 1
+                            if strcmp(eventTypeText, 'Sleep Staging') == 1
                                 obj.EventStages{end+1} = eventConceptText;
                                 SleepStageNames{end+1} = eventConceptText;
                             end
