@@ -1449,6 +1449,7 @@ try
     end
     disp(availableEventTypes);
     handles.availableEventTypes = availableEventTypes;
+    guidata(hObject, handles);
     set(handles.pmAnnotations, 'string', availableEventTypes);    % record and show event types(in array)
     
     % Display basic info:

@@ -163,7 +163,7 @@ classdef loadPSGAnnotationClass
                         stagesNameVector = readSROevents();
                     else
                         % SDO
-                        stagesNameVector = readSDOevents();
+                        stagesNameVector = obj.EventStages;
                     end
                     
                     for i = 0 : events.getLength - 1
@@ -180,23 +180,20 @@ classdef loadPSGAnnotationClass
                         try
                             eventConceptNode = events.item(i).getElementsByTagName('EventConcept');
                             eventConceptText = char(eventConceptNode.item(0).getTextContent);
-                            tooltip = eventConceptText;
+                            tooltip = '';
                             if i ~= 0
-                                if isempty(obj.isSDO)
-                                    tmp = strsplit(eventConceptText, '|');
-                                    eventConceptText = tmp{2};
-                                    tooltip = tmp{1};
-                                end
+                                if 
+                                tmp = strsplit(eventConceptText, '|');
+                                eventConceptText = tmp{2};
+                                tooltip = tmp{1};
                             end
                             
                             eventTypeNode = events.item(i).getElementsByTagName('EventType');
                             eventTypeText = char(eventTypeNode.item(0).getTextContent);
                             if i~= 0
-                                if isempty(obj.isSDO)
-                                    tmp = strsplit(eventTypeText, '|');
-                                    eventTypeText = tmp{2};
-                                    typeTooltip = tmp{1};
-                                end
+                                tmp = strsplit(eventTypeText, '|');
+                                eventTypeText = tmp{2};
+                                typeTooltip = tmp{1};
                             end
                             obj.EventConcepts{end+1} = eventConceptText;
                             if strcmp(eventTypeText, 'Sleep Staging') == 1
@@ -300,6 +297,11 @@ classdef loadPSGAnnotationClass
             %      eventNum is used for displaying error messages
             isValid = 1; % true
             eventErrMsg = '';
+%             eventIndex = find(ismember(obj.EventConcepts, eventStruct.EventConcept), 1);
+%             if isempty(eventIndex)
+%                 isValid = 0;
+%                 eventErrMsg = strcat(eventErrMsg, 'Event name not found;');
+%             end
             if isempty(eventStruct.EventConcept)
                 isValid = 0;
                 eventErrMsg = strcat(eventErrMsg, 'Event name not found;');
