@@ -246,7 +246,6 @@ classdef loadPSGAnnotationClass
                         end
                         
                         if strcmp(stagesNameVector{1},eventConceptText)==1
-                            disp('Match 1');
                             SleepStageValues = [SleepStageValues, ones(1,durationNum)+3];
                         elseif strcmp(stagesNameVector{2},eventConceptText)==1
                             SleepStageValues = [SleepStageValues, ones(1,durationNum)+2];
