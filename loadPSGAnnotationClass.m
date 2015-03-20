@@ -182,24 +182,26 @@ classdef loadPSGAnnotationClass
                             eventConceptText = char(eventConceptNode.item(0).getTextContent);
                             tooltip = eventConceptText;
                             if i ~= 0
-                                if isempty(obj.isSDO)
+%                                 if isempty(obj.isSDO)
                                     tmp = strsplit(eventConceptText, '|');
                                     eventConceptText = tmp{2};
                                     tooltip = tmp{1};
-                                end
+%                                 end
                             end
                             
                             eventTypeNode = events.item(i).getElementsByTagName('EventType');
                             eventTypeText = char(eventTypeNode.item(0).getTextContent);
                             if i~= 0
-                                if isempty(obj.isSDO)
+%                                 if isempty(obj.isSDO)
                                     tmp = strsplit(eventTypeText, '|');
                                     eventTypeText = tmp{2};
                                     typeTooltip = tmp{1};
-                                end
+%                                 end
                             end
                             obj.EventConcepts{end+1} = eventConceptText;
                             if strcmp(eventTypeText, 'Sleep Staging') == 1
+%                                 disp('Sleep Staging...');
+%                                 disp(eventConceptText);
                                 obj.EventStages{end+1} = eventConceptText;
                                 SleepStageNames{end+1} = eventConceptText;
                             end
@@ -244,6 +246,7 @@ classdef loadPSGAnnotationClass
                         end
                         
                         if strcmp(stagesNameVector{1},eventConceptText)==1
+                            disp('Match 1');
                             SleepStageValues = [SleepStageValues, ones(1,durationNum)+3];
                         elseif strcmp(stagesNameVector{2},eventConceptText)==1
                             SleepStageValues = [SleepStageValues, ones(1,durationNum)+2];
