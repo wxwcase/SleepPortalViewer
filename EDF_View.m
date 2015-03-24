@@ -790,7 +790,7 @@ if handles.hasAnnotation
             Start < (CurrentTime + WindowTime));
         
         if ~isempty(Index)            
-            ChNum=3;
+            ChNum=3; %% Will display channels on 5, 6 channel
             %[Original] Start =[];
             Start = [];
             for i=1:length(Index)

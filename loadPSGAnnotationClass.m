@@ -154,6 +154,7 @@ classdef loadPSGAnnotationClass
                         'EventConcept', '', ...
                         'Start', [], ...
                         'Duration', [], ...
+                        'InputCh', '', ...
                         'SpO2Baseline', [], ...
                         'SpO2Nadir', [], ...
                         'ToolTip', '' ...
@@ -175,6 +176,7 @@ classdef loadPSGAnnotationClass
                         durationNum = [];
                         hasDesaturation = [];
                         eventValid = 1;
+                        InputChName = '';
                         %%% First check if the event has predefined event
                         %%% length, if not report error(May need a report event error mechanism)
                         try
@@ -182,11 +184,9 @@ classdef loadPSGAnnotationClass
                             eventConceptText = char(eventConceptNode.item(0).getTextContent);
                             tooltip = eventConceptText;
                             if i ~= 0
-%                                 if isempty(obj.isSDO)
-                                    tmp = strsplit(eventConceptText, '|');
-                                    eventConceptText = tmp{2};
-                                    tooltip = tmp{1};
-%                                 end
+                                tmp = strsplit(eventConceptText, '|');
+                                eventConceptText = tmp{2};
+                                tooltip = tmp{1};
                             end
                             
                             eventTypeNode = events.item(i).getElementsByTagName('EventType');
@@ -204,6 +204,10 @@ classdef loadPSGAnnotationClass
 %                                 disp(eventConceptText);
                                 obj.EventStages{end+1} = eventConceptText;
                                 SleepStageNames{end+1} = eventConceptText;
+                            end
+                            
+                            if i ~= 0 & strcmp(eventTypeText, 'Sleep Staging') == 0
+                                InputChName = char(events.item(i).getElementsByTagName('Input').item(0).getTextContent);
                             end
                             
                             % Check if EventConcept contains these stages:
@@ -266,6 +270,7 @@ classdef loadPSGAnnotationClass
                             'EventConcept', eventConceptText, ...
                             'Start', startNum, ...
                             'Duration', durationNum, ...
+                            'InputCh', InputChName, ...
                             'SpO2Baseline', baselineNum, ...
                             'SpO2Nadir', nadirNum, ...
                             'ToolTip', tooltip ...
