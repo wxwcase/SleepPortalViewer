@@ -209,9 +209,7 @@ classdef loadPSGAnnotationClass
                             if i ~= 0 & strcmp(eventTypeText, 'Sleep Staging') == 0
                                 try
                                     InputChName = char(events.item(i).getElementsByTagName('Input').item(0).getTextContent);
-                                catch
-                                    % No input tag found
-                                end
+                                    catc
                             end
                             
                             % Check if EventConcept contains these stages:

@@ -783,11 +783,10 @@ if handles.hasAnnotation
     
     CurrentTime = get(handles.SliderTime,'value');
         
-    if ~handles.PlotType        
+    if ~handles.PlotType  % handles.PlotType is 0 for PhysioMIMI file
         % Annotation plot        
         % Forward Plot
-        Index = find(Start > CurrentTime & ...
-            Start < (CurrentTime + WindowTime));
+        Index = find(Start > CurrentTime & Start < (CurrentTime + WindowTime));
         
         if ~isempty(Index)            
             ChNum=3; %% Will display channels on 5, 6 channel
@@ -804,7 +803,7 @@ if handles.hasAnnotation
                 
                 fill([Start(i)  Temp Temp Start(i)], ...
                     [-ChNum-3/2 -ChNum-3/2 -ChNum-1/2 -ChNum-1/2 ]...
-                    ,[190 222 205]/255);   %%% TODO: fill green bar under selected chanel
+                    ,[190 222 205]/255);   % TODO: fill green bar under selected chanel
                 
                 plot([Start(i)  Temp Temp Start(i) Start(i)], ...
                     [-ChNum-3/2 -ChNum-3/2 -ChNum-1/2 -ChNum-1/2 -ChNum-3/2]...
@@ -1494,13 +1493,13 @@ if ~(sum(FileNameAnn == 0)) % if this file name is not empty string, use ~isempt
         % it is PhysiMIMI file
         if ~isempty(isCompumedics)
             handles.hasSleepStages = 1; %%% TODO set hasSleepStages 
-            handles.PlotType = 0; %%% Added 1-30-2015
+            handles.PlotType = 1; %%% Added 1-30-2015
         end
 
         handles.hasAnnotationType = 0;
         % handles.ScoredEvent is an array of event structure
         % eventStruct = struct('EventConcept','Start','Duration','SpO2Baseline','SpO2Nadir');
-        handles.PlotType = 0;
+        handles.PlotType = 1;
     end
     
     % Create list box contents TODO: extract into another function
