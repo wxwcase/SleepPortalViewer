@@ -872,7 +872,7 @@ if handles.hasAnnotation
                 text(0,-ChNum(i)-0.65+2,handles.ScoredEvent(IndexReverse(i)).EventConcept,'FontWeight','bold','FontSize',9)
             end
         end                        
-    else                
+    else    % handles.PlotType == 1  
         % Forward Plot
         Index = find(Start>CurrentTime & ...
             Start < (CurrentTime+WindowTime));
@@ -890,13 +890,19 @@ if handles.hasAnnotation
             end
             
             for i=1:length(Index)
+%             for i = 2:length(Index)
                 Temp=Start(i)+handles.ScoredEvent(Index(i)).Duration;
                 
                 if Temp>WindowTime
                     Temp=WindowTime;
                 end
                 
-                if ~isempty(ChNum)
+                % do not plot 'Recording Start Time' event and 'Sleep
+                % Staging' events
+                eventType = lower(handles.ScoredEvent(Index(i)).EventType);
+                eventName = lower(handles.ScoredEvent(Index(i)).EventConcept);
+                if ~isempty(ChNum) & isempty(strfind(eventType, 'sleep')) & isempty(strfind(eventType, 'stage'))...
+                        & isempty(strfind(eventName, 'recording start'))
                     ChNum = ChNum(end);
                     fill([Start(i)  Temp Temp Start(i)], ...
                         [-ChNum-3/2 -ChNum-3/2 -ChNum-1/2 -ChNum-1/2 ]+2 ...
@@ -948,7 +954,12 @@ if handles.hasAnnotation
                     ChNum = ChNum(1);
                 end
                 
-                if ~isempty(ChNum)
+                % do not plot 'Recording Start Time' event and 'Sleep
+                % Staging' events
+                eventType = lower(handles.ScoredEvent(IndexReverse(i)).EventType);
+                eventName = lower(handles.ScoredEvent(IndexReverse(i)).EventConcept);
+                if ~isempty(ChNum) & isempty(strfind(eventType, 'sleep')) & isempty(strfind(eventType, 'stage'))...
+                    & isempty(strfind(eventName, 'recording start'))                    
                     fill([0  Temp Temp 0], ...
                         [-ChNum-3/2 -ChNum-3/2 -ChNum-1/2 -ChNum-1/2 ]+2 ...
                         ,[190 222 205]/255); %%% Fill green bar under selected channel
@@ -1518,12 +1529,12 @@ if ~(sum(FileNameAnn == 0)) % if this file name is not empty string, use ~isempt
     
     % Create list box contents TODO: extract into another function
     % ListBox Comments annotation %%% TODO
-    Temp = cell(1, length(handles.ScoredEvent));
+    Temp = cell(1, length(handles.ScoredEvent) - 1);
     handles.eventIndexInCategory(1) = 1;
-    for i=1:length(handles.ScoredEvent)
+    for i=2:length(handles.ScoredEvent)
        Temp1 = fix(handles.ScoredEvent(i).Start / 30) + 1;
-       Temp{i}= [num2str(Temp1) ' - ' datestr(handles.ScoredEvent(i).Start/86400,'HH:MM:SS - ') handles.ScoredEvent(i).EventConcept];
-       handles.eventIndexInCategory(i) = i;
+       Temp{i - 1}= [num2str(Temp1) ' - ' datestr(handles.ScoredEvent(i).Start/86400,'HH:MM:SS - ') handles.ScoredEvent(i).EventConcept];
+       handles.eventIndexInCategory(i - 1) = i;
     end
     set(handles.ListBoxComments, 'string', Temp);
     
@@ -2227,12 +2238,11 @@ disp(categories);
 index_selected = get(hObject, 'Value');
 if index_selected(1) == 1
     % Selected 'All' category
-    Temp = cell(1, length(handles.ScoredEvent));
-    handles.eventIndexInCategory(1) = 1;
-    for i=1:length(handles.ScoredEvent)
+    Temp = cell(1, length(handles.ScoredEvent) - 1);
+    for i=2:length(handles.ScoredEvent)
        Temp1 = fix(handles.ScoredEvent(i).Start / 30) + 1;
-       Temp{i}= [num2str(Temp1) ' - ' datestr(handles.ScoredEvent(i).Start/86400,'HH:MM:SS - ') handles.ScoredEvent(i).EventConcept];
-       handles.eventIndexInCategory(i) = i;
+       Temp{i - 1}= [num2str(Temp1) ' - ' datestr(handles.ScoredEvent(i).Start/86400,'HH:MM:SS - ') handles.ScoredEvent(i).EventConcept];
+       handles.eventIndexInCategory(i - 1) = i;
     end
 %     set(handles.ListBoxComments, 'string', Temp);
 else
@@ -2246,14 +2256,14 @@ else
     disp('----------------------------------')
 
     Temp = {};
-    handles.eventIndexInCategory(1) = 1;
-    j = 2;
-    for i=1:length(handles.ScoredEvent)
+%     handles.eventIndexInCategory(1) = 1;
+    j = 1;
+    for i=2:length(handles.ScoredEvent)
         % if event is one of the selected values
-        if i == 1 % first event 'Record Start Time'
-            Temp1 = fix(handles.ScoredEvent(i).Start / 30) + 1;
-            Temp{end+1}= [num2str(Temp1) ' - ' datestr(handles.ScoredEvent(i).Start/86400,'HH:MM:SS - ') handles.ScoredEvent(i).EventConcept]; %, 'EventNumber #', num2str(i)];
-        end
+%         if i == 1 % first event 'Record Start Time'
+%             Temp1 = fix(handles.ScoredEvent(i).Start / 30) + 1;
+%             Temp{end+1}= [num2str(Temp1) ' - ' datestr(handles.ScoredEvent(i).Start/86400,'HH:MM:SS - ') handles.ScoredEvent(i).EventConcept]; %, 'EventNumber #', num2str(i)];
+%         end
         eventCategory = handles.ScoredEvent(i).EventType;
         if ismember(eventCategory, values_selected)
             Temp1 = fix(handles.ScoredEvent(i).Start / 30) + 1;
