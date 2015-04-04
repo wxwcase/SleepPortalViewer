@@ -598,6 +598,10 @@ if handles.EDF_CHECK == 0
     return
 end
 
+% Fix bug: ListBoxComments will not show, Apr, 4, 2015
+set(handles.ListBoxComments, 'value', 1);
+set(handles.pmAnnotations, 'value', 1);
+
 % Get menu entry
 popup_id = get(handles.PopMenuWindowTime,'value'); %TODO popup_id => PopMenuWindowTime_value
 %[Original] epoch_length; variable name conflict with previous function
