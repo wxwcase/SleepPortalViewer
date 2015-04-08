@@ -190,20 +190,26 @@ classdef loadPSGAnnotationClass
                             eventTypeNode = events.item(i).getElementsByTagName('EventType');
                             eventTypeText = char(eventTypeNode.item(0).getTextContent);
                             if i~= 0
-                                tmp = strsplit(eventTypeText, '|');
-                                eventTypeText = tmp{2};
-                                typeTooltip = tmp{1};
+%                                 if isempty(obj.isSDO)
+                                    tmp = strsplit(eventTypeText, '|');
+                                    eventTypeText = tmp{2};
+                                    typeTooltip = tmp{1};
+%                                 end
                             end
                             obj.EventConcepts{end+1} = eventConceptText;
                             if strcmp(eventTypeText, 'Sleep Staging') == 1
+%                                 disp('Sleep Staging...');
+%                                 disp(eventConceptText);
                                 obj.EventStages{end+1} = eventConceptText;
                                 SleepStageNames{end+1} = eventConceptText;
                             end
                             
                             if i ~= 0 & strcmp(eventTypeText, 'Sleep Staging') == 0
                                 try
+                                    %InputChName = char(events.item(i).getElementsByTagName('Input').item(0).getTextContent);
                                     InputChName = char(events.item(i).getElementsByTagName('SignalLocation').item(0).getTextContent);
-                                    % is InputChName is empty, how to deal with it:
+                                    % is InputChName is empty, how to deal
+                                    % with it:
                                 catch
                                     % No input tag found
                                 end
@@ -388,7 +394,21 @@ classdef loadPSGAnnotationClass
         end
     end
     %------------------------------------------------- Dependent Properties
-    methods(Static)        
+    methods(Static)
+        %--------------------------------------------- Get signal location
+        %map
+        function result=isEdfSignalInMap(tagName, edfSignalName)
+            if ~isKey(loadPSGAnnotationClass.signalMap, tagName)
+                result = 0;
+            else
+                names = loadPSGAnnotationClass.signalMap(tagName);
+                if isempty(find(ismember(names{1}, edfSignalName), 1))
+                    result = 0;
+                else
+                    result = 1;
+                end
+            end
+        end
         %--------------------------------------------- Read in Events(json)
         function events=readMapConfig(fname)
         % 2014-12-3, Read PSG configuration file in the default directory

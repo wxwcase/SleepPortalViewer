@@ -686,6 +686,8 @@ for i=1:handles.FileInfo.SignalNumbers
 end
 
 % Sec/handles.DatarecordDuration is the number of
+%%% TODO: HeartBEAT, when WindowTime = 5,
+%%% handles.FileInfo.DataRecordDuration = 10, will crash
 for i=1 : WindowTime/handles.FileInfo.DataRecordDuration
     for j=1:handles.FileInfo.SignalNumbers
         Data{j}= [Data{j} fread(fid,[1 handles.ChInfo.nr(j)],'int16') ];
@@ -801,95 +803,25 @@ if handles.hasAnnotation
     
     CurrentTime = get(handles.SliderTime,'value');
         
-    if ~handles.PlotType  % handles.PlotType is 0 for PhysioMIMI file
-        % Annotation plot        
+    if handles.PlotType  % handles.PlotType is 0 for PhysioMIMI file                            
+        % handles.PlotType == 1  
         % Forward Plot
-        Index = find(Start > CurrentTime & Start < (CurrentTime + WindowTime));
-        
-        if ~isempty(Index)            
-            ChNum=3; %% Will display channels on 5, 6 channel
-            %[Original] Start =[];
-            Start = [];
-            for i=1:length(Index)
-                Start(i) = handles.ScoredEvent(Index(i)).Start - CurrentTime;
-                %%% change variable 'Temp' to reflect the meaning
-                Temp = Start(i) + handles.ScoredEvent(Index(i)).Duration;
-                
-                if Temp > WindowTime
-                    Temp = WindowTime;
-                end
-                
-                fill([Start(i)  Temp Temp Start(i)], ...
-                    [-ChNum-3/2 -ChNum-3/2 -ChNum-1/2 -ChNum-1/2 ]...
-                    ,[190 222 205]/255);   % TODO: fill green bar under selected chanel
-                
-                plot([Start(i)  Temp Temp Start(i) Start(i)], ...
-                    [-ChNum-3/2 -ChNum-3/2 -ChNum-1/2 -ChNum-1/2 -ChNum-3/2]...
-                    ,'Color',[1 1 1]);
-            end
-        end
-        
-        % Annotation text
-        if ~isempty(Index)
-            for i=1:3:length(Index)
-                text(Start(i),-ChNum-0.65,handles.ScoredEvent(Index(i)).EventConcept,'FontWeight','bold','FontSize',9)
-            end
-        end
-    
-        
-        % Reverse plot added --- Jan 22, 2013
-        %[Original] Temp = []; Temp => EndTime; ScoredEvent_EndTime TODO
-        %[Original] Start = [];
-        EndTime = [];
-        Start = [];
-        for i=1:length(handles.ScoredEvent)
-            EndTime(i)=handles.ScoredEvent(i).Start+handles.ScoredEvent(i).Duration;
-            Start(i)=handles.ScoredEvent(i).Start;
-        end
-        IndexReverse = find((EndTime)>=CurrentTime & EndTime <= (CurrentTime+WindowTime));
-        IndexReverse = [IndexReverse find(Start<=CurrentTime & EndTime >= (CurrentTime+WindowTime) )];
-        
-        
-        for i = 1:length(Index)
-            IndexReverse(IndexReverse == Index(i)) = [];
-        end
-        
-        
-        Start = Start(IndexReverse) - CurrentTime;        
-        if ~isempty(IndexReverse)
-            
-            ChNum = [];
-            for j = IndexReverse
-                ChNum = [ChNum 6];
-            end
-            
-            for i = 1:length(IndexReverse)
-                Temp = Start(i) + handles.ScoredEvent(IndexReverse(i)).Duration;
-                
-                fill([0  Temp Temp 0], ...
-                    [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 ]+2 ...
-                    ,[190 222 205]/255);   %%% TODO: fill green bar under selected channel
-                
-                plot([0  Temp Temp 0 0], ...
-                    [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 -ChNum(i)-3/2]+2 ...
-                    ,'Color',[1 1 1]);
-                text(0,-ChNum(i)-0.65+2,handles.ScoredEvent(IndexReverse(i)).EventConcept,'FontWeight','bold','FontSize',9)
-            end
-        end                        
-    else    % handles.PlotType == 1  
-        % Forward Plot
-        Index = find(Start>CurrentTime & ...
-            Start < (CurrentTime+WindowTime));
+        Index = find(Start>CurrentTime & Start < (CurrentTime+WindowTime));
         
         if ~isempty(Index)
             Start = Start(Index)-CurrentTime;
             ChNum = [];
             for j = Index
+                disp(sprintf('j is : %d, ScoredEvent.InputCh = %s', j, handles.ScoredEvent(j).InputCh));
                 for i=1:size(handles.ChInfo.Labels,1)
                     if  strncmp(upper(handles.ChInfo.Labels(i,:)),[upper(handles.ScoredEvent(j).InputCh) ' '],...
                             length(handles.ScoredEvent(j).InputCh+1))
                         ChNum=[ChNum i];
                     end
+%                     if j ~= 1 & loadPSGAnnotationClass.isEdfSignalInMap(handles.ScoredEvent(j).InputCh, strtrim(handles.ChInfo.Labels(i,:)))
+%                         disp(sprintf('handles.ChInfo.Label = %s', handles.ChInfo.Labels(i,:)));
+%                         ChNum=[ChNum i];
+%                     end
                 end
             end
             
@@ -942,6 +874,7 @@ if handles.hasAnnotation
             
             ChNum=[];
             for j=IndexReverse
+                disp(sprintf('j = %d, ScoredEvent.InputCh = %s', j, handles.ScoredEvent(j).InputCh));
                 for i=1:size(handles.ChInfo.Labels,1)
                     % Check for each signal that has the prefix of the
                     % assoicated values
@@ -949,6 +882,10 @@ if handles.hasAnnotation
                             length(handles.ScoredEvent(j).InputCh+1))
                         ChNum=[ChNum i];
                     end
+%                     if j ~= 1 & loadPSGAnnotationClass.isEdfSignalInMap(handles.ScoredEvent(j).InputCh, strtrim(handles.ChInfo.Labels(i,:)))
+%                         disp(sprintf('handles.ChInfo.Label = %s', handles.ChInfo.Labels(i,:)));
+%                         ChNum=[ChNum i];
+%                     end
                 end
             end
             
@@ -1016,7 +953,7 @@ for i=1:size(SelectedCh,1)
     Counter = Counter + 1 ;
         
     % Store Current Scaling Factor
-    auto_scale_factor (i) = FilterPara{i}.ScalingFactor;
+    auto_scale_factor(i) = FilterPara{i}.ScalingFactor;
     scaled_data_range = [scaled_data_range;...
         [min(handles.Data{i}*FilterPara{i}.ScalingFactor),...
          max(handles.Data{i}*FilterPara{i}.ScalingFactor)]];    
@@ -1276,6 +1213,8 @@ if isfield(handles, 'ScoredEvent') % added check field(handles.ScoredEvent)
     end
     set(handles.SliderTime,'value',fix(Time)); %[Original]
     fprintf('Selected slider value: #: %d\n', get(handles.SliderTime, 'value'));
+    handles = UpDatePlot(hObject, handles);
+    guidata(hObject, handles);
 end
 
 if get(handles.SliderTime, 'value') <= length(handles.SleepStages) - WindowTime
@@ -1520,15 +1459,14 @@ if ~(sum(FileNameAnn == 0)) % if this file name is not empty string, use ~isempt
         handles.SleepStages = Temp;
     else
         % it is PhysiMIMI file
+        handles.PlotType = 1;
         if ~isempty(isCompumedics)
             handles.hasSleepStages = 1; %%% TODO set hasSleepStages 
-            handles.PlotType = 1; %%% Added 1-30-2015
         end
 
         handles.hasAnnotationType = 0;
         % handles.ScoredEvent is an array of event structure
         % eventStruct = struct('EventConcept','Start','Duration','SpO2Baseline','SpO2Nadir');
-        handles.PlotType = 1;
     end
     
     % Create list box contents TODO: extract into another function
