@@ -807,30 +807,27 @@ if handles.hasAnnotation
         % Index: event index that falls in the current slider time and 
         %        current slider time plus window time
         Index = find(Start>CurrentTime & Start < (CurrentTime+WindowTime));
-        Index = Index(Index~=1); % do not record 'Recording Start Time', a.k.a the first scored event
         
         if ~isempty(Index)
             Start = Start(Index)-CurrentTime; % between 0 and Start(Index)
             ChNum = [];
             for j = Index
-%                 fprintf('Selected index is : %d, ScoredEvent.InputCh = [%s] ', j, handles.ScoredEvent(j).InputCh);
+                fprintf('Selected index is : %d, ScoredEvent.InputCh = %s\n', j, handles.ScoredEvent(j).InputCh);
                 for i=1:size(handles.ChInfo.Labels,1)
                     if  strncmp(upper(handles.ChInfo.Labels(i,:)),[upper(handles.ScoredEvent(j).InputCh) ' '],...
                             length(handles.ScoredEvent(j).InputCh+1))
-%                         fprintf('EDF Label: = [%s]\n', handles.ChInfo.Labels(i,:));
-%                         fprintf('plot index: %d\n', i);
+                        fprintf('Selected index is : %d, EDF Label: = %s\n', j, handles.ChInfo.Labels(i,:));
+                        fprintf('plot index: %d\n', i);
                         ChNum=[ChNum i];
                         break;
                     end
                 end
             end
-            % Debug
-            fprintf('Channel to plot:');
+            fprintf('Selected channel number:');
             for i=1:length(ChNum)
                 fprintf('%d ', ChNum(i));
             end
             fprintf('\n');
-            
             for i=1:length(Index)
                 Temp=Start(i)+handles.ScoredEvent(Index(i)).Duration;
                 
@@ -842,23 +839,21 @@ if handles.hasAnnotation
                 % Staging' events
                 eventType = lower(handles.ScoredEvent(Index(i)).EventType);
                 eventName = lower(handles.ScoredEvent(Index(i)).EventConcept);
-                if ~isempty(ChNum) & isempty(strfind(eventType, 'sleep')) & isempty(strfind(eventType, 'stage'))
-                        %& isempty(strfind(eventName, 'recording start'))
-%                         ChNum = ChNum(end); original                    
+                if ~isempty(ChNum) & isempty(strfind(eventType, 'sleep')) & isempty(strfind(eventType, 'stage'))...
+                        & isempty(strfind(eventName, 'recording start'))
+%                     ChNum = ChNum(end) original
                     for i=1:length(ChNum)
                         fill([Start(i)  Temp Temp Start(i)], ...
-                            [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 ]+2 ...
-                            ,[190 222 205]/255);   %%% TODO: fill gree...
-                    
-                        plot([Start(i)  Temp Temp Start(i) Start(i)], ...
-                            [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 -ChNum(i)-3/2]+2 ...
-                            ,'Color',[1 1 1]);
-%                         Debug:                        
-%                         fprintf('Text to be plot: %s\n', handles.ScoredEvent(Index(i)).EventConcept);
-%                         fprintf('Event duration: %d\n', handles.ScoredEvent(Index(i)).Duration);
-%                         fprintf('event name to be plotted: %s\n', handles.ScoredEvent(Index(i)).EventConcept);
-                        text(Start(i),-ChNum(i)-0.65+2,handles.ScoredEvent(Index(i)).EventConcept,'FontWeight','bold','FontSize',9)
+                        [-ChNum-3/2 -ChNum-3/2 -ChNum-1/2 -ChNum-1/2 ]+2 ...
+                        ,[190 222 205]/255);   %%% TODO: fill gree...
                     end
+                    
+                    plot([Start(i)  Temp Temp Start(i) Start(i)], ...
+                        [-ChNum-3/2 -ChNum-3/2 -ChNum-1/2 -ChNum-1/2 -ChNum-3/2]+2 ...
+                        ,'Color',[1 1 1]);
+                    fprintf('Text to be plot: %s\n', handles.ScoredEvent(Index(i)).EventConcept);
+                    fprintf('Event duration: %d\n', handles.ScoredEvent(Index(i)).Duration);
+                    text(Start(i),-ChNum-0.65+2,handles.ScoredEvent(Index(i)).EventConcept,'FontWeight','bold','FontSize',9)
                 end
             end                        
         end
@@ -875,7 +870,6 @@ if handles.hasAnnotation
         % find end index in current window
         IndexReverse = find((EndTime)>=CurrentTime & EndTime <= (CurrentTime+WindowTime));
         IndexReverse = [IndexReverse find(Start<=CurrentTime & EndTime >= (CurrentTime+WindowTime) )];
-        IndexReverse = IndexReverse(IndexReverse~=1);
         
         for i=1:length(Index)
             IndexReverse(IndexReverse==Index(i))=[];
@@ -899,27 +893,25 @@ if handles.hasAnnotation
             
             for i=1:length(IndexReverse)
                 Temp=Start(i)+handles.ScoredEvent(IndexReverse(i)).Duration;
-%                 if length(ChNum)>1 original
-%                     ChNum = ChNum(1);
-%                 end
+                if length(ChNum)>1
+                    ChNum = ChNum(1);
+                end
                 
                 % do not plot 'Recording Start Time' event and 'Sleep
                 % Staging' events
                 eventType = lower(handles.ScoredEvent(IndexReverse(i)).EventType);
                 eventName = lower(handles.ScoredEvent(IndexReverse(i)).EventConcept);
-                if ~isempty(ChNum) & isempty(strfind(eventType, 'sleep')) & isempty(strfind(eventType, 'stage'))
-                    %& isempty(strfind(eventName, 'recording start'))
-                    for i=1:length(ChNum)
-                        fill([0  Temp Temp 0], ...
-                            [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 ]+2 ...
-                            ,[190 222 205]/255); %%% Fill green bar under selected channel
+                if ~isempty(ChNum) & isempty(strfind(eventType, 'sleep')) & isempty(strfind(eventType, 'stage'))...
+                    & isempty(strfind(eventName, 'recording start'))                    
+                    fill([0  Temp Temp 0], ...
+                        [-ChNum-3/2 -ChNum-3/2 -ChNum-1/2 -ChNum-1/2 ]+2 ...
+                        ,[190 222 205]/255); %%% Fill green bar under selected channel
 
-                        plot([0  Temp Temp 0 0], ...
-                            [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 -ChNum(i)-3/2]+2 ...
-                            ,'Color',[1 1 1]);                
+                    plot([0  Temp Temp 0 0], ...
+                        [-ChNum-3/2 -ChNum-3/2 -ChNum-1/2 -ChNum-1/2 -ChNum-3/2]+2 ...
+                        ,'Color',[1 1 1]);                
 
-                        text(0,-ChNum(i)-0.65+2,handles.ScoredEvent(IndexReverse(i)).EventConcept,'FontWeight','bold','FontSize',9);
-                    end
+                    text(0,-ChNum-0.65+2,handles.ScoredEvent(IndexReverse(i)).EventConcept,'FontWeight','bold','FontSize',9);
                 end
             end  
         end
