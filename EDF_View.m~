@@ -912,8 +912,7 @@ if handles.hasAnnotation
                 inputChannel = [handles.ScoredEvent(j).InputCh, ' '];
                 inputChannel(inputChannel == ' ') = []; % remove white space
                 for i=1:size(SelectedChMap, 1)
-%                     if strncmpi(SelectedChMap{i,1}, [handles.ScoredEvent(j).InputCh, ' '],...                            
-                    if strncmpi(SelectedChMap{i,1}, inputChannel,... 
+                    if strncmpi(SelectedChMap{i,1}, [handles.ScoredEvent(j).InputCh, ' '],...                            
                             length(handles.ScoredEvent(j).InputCh+1)) & isempty(strfind(lower(handles.ScoredEvent(j).EventType), 'sleep'))
                         ChNum=[ChNum i];
                         ChTxt{end+1} = handles.ScoredEvent(j).EventConcept;
