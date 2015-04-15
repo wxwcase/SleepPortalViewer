@@ -117,8 +117,6 @@ set(handles.figure1,'WindowStyle','modal')
 % UIWAIT makes ChSelection wait for user response (see UIRESUME)
 uiwait(handles.figure1);
 
-
-
 % --- Outputs from this function are returned to the command line.
 function varargout = ChSelection_OutputFcn(hObject, eventdata, handles) 
 % varargout  cell array for returning output args (see VARARGOUT);
@@ -205,6 +203,7 @@ if length(available_channels_string) > 0
     handles = UpdateList(hObject, handles);   
     Enable_Disable_Add_Remove(hObject, eventdata, handles)
 end
+
 %-------------------------------------------------------------- Update List
 function handles = UpdateList(hObject,handles)
 
@@ -216,6 +215,7 @@ if get(handles.SelectedList,'value')>size(SelectedCh,1)
 end
 
 SelectedChMap = [];
+% mainCh = handles.ChInfo.Labels(SelectedCh(i,1), :);
 for i=1:size(SelectedCh,1)
     if SelectedCh(i,2)==0
         SelectedChMap{i,1} = handles.ChInfo.Labels(SelectedCh(i,1),:);
@@ -226,12 +226,9 @@ for i=1:size(SelectedCh,1)
 end
 set(handles.SelectedList,'String',SelectedChMap);
 
-
-
 if get(handles.MainList1,'value')==0
     set(handles.MainList1,'value',1);
 end
-
 
 if get(handles.MainList2,'value')==0
     set(handles.MainList2,'value',1);
@@ -240,8 +237,6 @@ end
 if get(handles.SelectedList,'value')==0
     set(handles.SelectedList,'value',1);
 end
-
-
 
 if get(handles.PopMenuChType,'value')==1
     % ref mode
@@ -270,7 +265,6 @@ else
     
     set(handles.MainList2,'String',handles.ChInfo.Labels(Temp,:));
 end
-
 
 
 % --- Executes on button press in Remove.
@@ -317,7 +311,6 @@ guidata(hObject, handles);
 
 UpdateList(hObject, handles);
 Enable_Disable_Add_Remove(hObject, eventdata, handles)
-
 
 
 % --- Executes on selection change in PopMenuChType.

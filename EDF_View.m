@@ -353,6 +353,7 @@ if ~(length(FilePath)==1)
     numOfChannels = length(handles.ChInfo.nr); % numOfSamples => numOfChannels
 
     % Initialize to be selected channels
+    % Temp = ns x 2 structure, <index of channel, 1/0 (not) selected>
     Temp = [(1:numOfChannels)' zeros(numOfChannels,1)];
    
     handles.SelectedCh = Temp;
@@ -448,12 +449,9 @@ if ~(length(FilePath)==1)
     handles.TotalTime = (EdfFileAttributes.bytes - handles.FileInfo.HeaderNumBytes) ...
         / 2  / sum(handles.ChInfo.nr) * handles.FileInfo.DataRecordDuration;
     
-    %[Original] Temp, Temp => popup_id; TODO => popMenuWindowTime_value
-    popMenuWindowTime_value = get(handles.PopMenuWindowTime,'value');
-    %[Original] Temp, Temp => WindowTimeIndexFromList
-    WindowTime = handles.epoch_menu_values(popMenuWindowTime_value);
+    popMenuWindowTime_selectedIdx = get(handles.PopMenuWindowTime,'value');
+    WindowTime = handles.epoch_menu_values(popMenuWindowTime_selectedIdx);
     
-    %[Original] Temp, Temp => MaxTime
     MaxTime = handles.TotalTime - WindowTime;
     set(handles.SliderTime, 'max', MaxTime, 'SliderStep', [0.2 1] * WindowTime / MaxTime, 'value', 0)
     
@@ -768,10 +766,11 @@ WindowTime = handles.epoch_menu_values(popup_id);
 SelectedCh = handles.SelectedCh;
 
 % Identify channels to plot   %%% TODO
-%[Original] SelectedChMap = [];
+% SelectedChMap is what appears on the viewer signal labels
 SelectedChMap = cell(length(SelectedCh), 1);
 for i=1:size(SelectedCh,1)
     if SelectedCh(i,2) == 0
+        % SelectedCh(i,1) is the selected channel index
         SelectedChMap{i,1} = handles.ChInfo.Labels(SelectedCh(i,1),:);
     else
         SelectedChMap{i,1} = [handles.ChInfo.Labels(SelectedCh(i,1),:) '-' handles.ChInfo.Labels(SelectedCh(i,2),:)];
@@ -808,26 +807,41 @@ if handles.hasAnnotation
         %        current slider time plus window time
         Index = find(Start>CurrentTime & Start < (CurrentTime+WindowTime));
         Index = Index(Index~=1); % do not record 'Recording Start Time', a.k.a the first scored event
+        fprintf('Index<');
+        for i=1:length(Index)
+            fprintf('#%d: %s ',Index(i), handles.ScoredEvent(Index(i)).EventConcept);
+        end
+        disp('>');
         
+        disp(SelectedChMap);
         if ~isempty(Index)
             Start = Start(Index)-CurrentTime; % between 0 and Start(Index)
             ChNum = [];
+            ChTxt = {};
             for j = Index
-%                 fprintf('Selected index is : %d, ScoredEvent.InputCh = [%s] ', j, handles.ScoredEvent(j).InputCh);
-                for i=1:size(handles.ChInfo.Labels,1)
-                    if  strncmp(upper(handles.ChInfo.Labels(i,:)),[upper(handles.ScoredEvent(j).InputCh) ' '],...
-                            length(handles.ScoredEvent(j).InputCh+1))
-%                         fprintf('EDF Label: = [%s]\n', handles.ChInfo.Labels(i,:));
-%                         fprintf('plot index: %d\n', i);
+%                 for i=1:size(handles.ChInfo.Labels,1) % should change to SelectedCh
+%                     if  strncmp(upper(handles.ChInfo.Labels(i,:)),[upper(handles.ScoredEvent(j).InputCh) ' '],...
+%                             length(handles.ScoredEvent(j).InputCh+1))
+%                         ChNum=[ChNum i]; % should use SelectedChMap to decide index to plot
+%                         break;
+%                     end
+%                 end                
+                fprintf('ScoredEvent: %d, InputCh: %s\n',j, [handles.ScoredEvent(j).InputCh, ' ']);
+                for i=1:size(SelectedChMap, 1)
+                    if strncmpi(SelectedChMap{i,1}, [handles.ScoredEvent(j).InputCh, ' '],...
+                            length(handles.ScoredEvent(j).InputCh+1)) & isempty(strfind(lower(handles.ScoredEvent(j).EventType), 'sleep'))
+                        fprintf('<%s, %s>\n', SelectedChMap{i,1}, [handles.ScoredEvent(j).InputCh, ' ']);
                         ChNum=[ChNum i];
+                        ChTxt{end+1} = handles.ScoredEvent(j).EventConcept;
                         break;
                     end
-                end
+                end                
             end
-            % Debug
-            fprintf('Channel to plot:');
+            % DEBUG
+            fprintf('\n');
+            fprintf('Channel to plot:\n');
             for i=1:length(ChNum)
-                fprintf('%d ', ChNum(i));
+                fprintf('[%d %s %s]\n', ChNum(i), SelectedChMap{ChNum(i),1}, ChTxt{i});
             end
             fprintf('\n');
             
@@ -842,7 +856,7 @@ if handles.hasAnnotation
                 % Staging' events
                 eventType = lower(handles.ScoredEvent(Index(i)).EventType);
                 eventName = lower(handles.ScoredEvent(Index(i)).EventConcept);
-                if ~isempty(ChNum) & isempty(strfind(eventType, 'sleep')) & isempty(strfind(eventType, 'stage'))
+                if ~isempty(ChNum) & isempty(strfind(eventType, 'sleep')) & isempty(strfind(eventType, 'staging'))
                         %& isempty(strfind(eventName, 'recording start'))
 %                         ChNum = ChNum(end); original                    
                     for i=1:length(ChNum)
@@ -857,9 +871,10 @@ if handles.hasAnnotation
 %                         fprintf('Text to be plot: %s\n', handles.ScoredEvent(Index(i)).EventConcept);
 %                         fprintf('Event duration: %d\n', handles.ScoredEvent(Index(i)).Duration);
 %                         fprintf('event name to be plotted: %s\n', handles.ScoredEvent(Index(i)).EventConcept);
-                        text(Start(i),-ChNum(i)-0.65+2,handles.ScoredEvent(Index(i)).EventConcept,'FontWeight','bold','FontSize',9)
+%                         text(Start(i),-ChNum(i)-0.65+2,handles.ScoredEvent(Index(i)).EventConcept,'FontWeight','bold','FontSize',9)
+                        text(Start(i),-ChNum(i)-0.65+2,ChTxt(i),'FontWeight','bold','FontSize',9);
                     end
-                end
+                end                
             end                        
         end
         
@@ -885,13 +900,23 @@ if handles.hasAnnotation
         if ~isempty(IndexReverse)
             
             ChNum=[];
+            ChTxt = {};
             for j=IndexReverse
-                for i=1:size(handles.ChInfo.Labels,1)
-                    % Check for each signal that has the prefix of the
-                    % assoicated values
-                    if  strncmp(upper(handles.ChInfo.Labels(i,:)),[upper(handles.ScoredEvent(j).InputCh) ' '],...
-                            length(handles.ScoredEvent(j).InputCh+1))
+%                 for i=1:size(handles.ChInfo.Labels,1)
+%                     % Check for each signal that has the prefix of the
+%                     % assoicated values
+%                     if  strncmp(upper(handles.ChInfo.Labels(i,:)),[upper(handles.ScoredEvent(j).InputCh) ' '],...
+%                             length(handles.ScoredEvent(j).InputCh+1))
+%                         ChNum=[ChNum i];
+%                         break;
+%                     end                    
+%                 end
+                
+                for i=1:size(SelectedChMap, 1)
+                    if strncmpi(SelectedChMap{i,1}, [handles.ScoredEvent(j).InputCh, ' '],...
+                            length(handles.ScoredEvent(j).InputCh+1)) & isempty(strfind(lower(handles.ScoredEvent(j).EventType), 'sleep'))
                         ChNum=[ChNum i];
+                        ChTxt{end+1} = handles.ScoredEvent(j).EventConcept;
                         break;
                     end
                 end
@@ -907,7 +932,7 @@ if handles.hasAnnotation
                 % Staging' events
                 eventType = lower(handles.ScoredEvent(IndexReverse(i)).EventType);
                 eventName = lower(handles.ScoredEvent(IndexReverse(i)).EventConcept);
-                if ~isempty(ChNum) & isempty(strfind(eventType, 'sleep')) & isempty(strfind(eventType, 'stage'))
+                if ~isempty(ChNum) & isempty(strfind(eventType, 'sleep')) & isempty(strfind(eventType, 'staging'))
                     %& isempty(strfind(eventName, 'recording start'))
                     for i=1:length(ChNum)
                         fill([0  Temp Temp 0], ...
@@ -918,7 +943,8 @@ if handles.hasAnnotation
                             [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 -ChNum(i)-3/2]+2 ...
                             ,'Color',[1 1 1]);                
 
-                        text(0,-ChNum(i)-0.65+2,handles.ScoredEvent(IndexReverse(i)).EventConcept,'FontWeight','bold','FontSize',9);
+%                          text(0,-ChNum(i)-0.65+2,handles.ScoredEvent(IndexReverse(i)).EventConcept,'FontWeight','bold','FontSize',9);
+                        text(Start(i),-ChNum(i)-0.65+2,ChTxt(i),'FontWeight','bold','FontSize',9)
                     end
                 end
             end  
@@ -1473,6 +1499,8 @@ if ~(sum(FileNameAnn == 0)) % if this file name is not empty string, use ~isempt
         handles.PlotType = 1;
         if ~isempty(isCompumedics)
             handles.hasSleepStages = 1; %%% TODO set hasSleepStages 
+        else
+            handles.hasSleepStages = 0; %%% TODO DEBUG
         end
 
         handles.hasAnnotationType = 0;
