@@ -1002,8 +1002,9 @@ handles.auto_scale_factor(index) = handles.auto_scale_height./data_range(index);
 guidata(hObject, handles);
 
 % Stage information
-if handles.hasSleepStages %%% TODO
- if and(handles.hasAnnotation, epoch_length == 30)
+if handles.hasSleepStages && handles.hasAnnotation%%% TODO
+%  if and(handles.hasAnnotation, epoch_length == 30) TODO: comment out
+%  Apr, 15, 2015
      % plot sleep states
      %%% TODO temporal approach to handles index out of range error
 %      if get(handles.SliderTime, 'value') + WindowTime > length(handles.SleepStages)
@@ -1067,7 +1068,7 @@ if handles.hasSleepStages %%% TODO
          
          text(WindowTime/2,1.5,['State ' TempState],'fontweight','bold')
      end
-end
+% end
 end
 
 % Set the yTick
