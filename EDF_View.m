@@ -792,7 +792,6 @@ if handles.hasAnnotation
     end
     
     % Get scored event time
-    %[Original] Start = [];
     Start = [];
     for i=1:length(handles.ScoredEvent)
         Start(i) = handles.ScoredEvent(i).Start;
@@ -817,7 +816,8 @@ if handles.hasAnnotation
         if ~isempty(Index)
             Start = Start(Index)-CurrentTime; % between 0 and Start(Index)
             ChNum = [];
-            ChTxt = {};
+            ChTxt = {}; % signal label that should be displayed, improved support
+                        % for displaying montages
             for j = Index
 %                 for i=1:size(handles.ChInfo.Labels,1) % should change to SelectedCh
 %                     if  strncmp(upper(handles.ChInfo.Labels(i,:)),[upper(handles.ScoredEvent(j).InputCh) ' '],...
@@ -830,7 +830,6 @@ if handles.hasAnnotation
                 inputChannel = [handles.ScoredEvent(j).InputCh, ' '];
                 inputChannel(inputChannel == ' ') = []; % remove white space
                 for i=1:size(SelectedChMap, 1)
-%                     if strncmpi(SelectedChMap{i,1}, [handles.ScoredEvent(j).InputCh, ' '],...
                     if strncmpi(SelectedChMap{i,1}, inputChannel,...
                             length(handles.ScoredEvent(j).InputCh+1)) & isempty(strfind(lower(handles.ScoredEvent(j).EventType), 'sleep'))
                         fprintf('<%s, %s>\n', SelectedChMap{i,1}, [handles.ScoredEvent(j).InputCh, ' ']);
@@ -858,14 +857,13 @@ if handles.hasAnnotation
                 % do not plot 'Recording Start Time' event and 'Sleep
                 % Staging' events
                 eventType = lower(handles.ScoredEvent(Index(i)).EventType);
-                eventName = lower(handles.ScoredEvent(Index(i)).EventConcept);
-                if ~isempty(ChNum) & isempty(strfind(eventType, 'sleep')) & isempty(strfind(eventType, 'staging'))
+                if ~isempty(ChNum) && isempty(strfind(eventType, 'sleep')) && isempty(strfind(eventType, 'staging'))
                         %& isempty(strfind(eventName, 'recording start'))
 %                         ChNum = ChNum(end); original                    
                     for i=1:length(ChNum)
                         fill([Start(i)  Temp Temp Start(i)], ...
                             [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 ]+2 ...
-                            ,[190 222 205]/255);   %%% TODO: fill gree...
+                            ,[190 222 205]/255);   %%% TODO: fill green area...
                     
                         plot([Start(i)  Temp Temp Start(i) Start(i)], ...
                             [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 -ChNum(i)-3/2]+2 ...
@@ -877,8 +875,6 @@ if handles.hasAnnotation
         end
         
         % Reverse Plot
-        %[Original] Temp = []; Temp => EndTime
-        %[Original] EndTime = []; Start = []
         EndTime = [];
         Start = [];
         for i=1:length(handles.ScoredEvent)
@@ -901,8 +897,6 @@ if handles.hasAnnotation
             ChTxt = {};
             for j=IndexReverse
 %                 for i=1:size(handles.ChInfo.Labels,1)
-%                     % Check for each signal that has the prefix of the
-%                     % assoicated values
 %                     if  strncmp(upper(handles.ChInfo.Labels(i,:)),[upper(handles.ScoredEvent(j).InputCh) ' '],...
 %                             length(handles.ScoredEvent(j).InputCh+1))
 %                         ChNum=[ChNum i];
@@ -914,7 +908,7 @@ if handles.hasAnnotation
                 for i=1:size(SelectedChMap, 1)
 %                     if strncmpi(SelectedChMap{i,1}, [handles.ScoredEvent(j).InputCh, ' '],...                            
                     if strncmpi(SelectedChMap{i,1}, inputChannel,... 
-                            length(handles.ScoredEvent(j).InputCh+1)) & isempty(strfind(lower(handles.ScoredEvent(j).EventType), 'sleep'))
+                            length(handles.ScoredEvent(j).InputCh+1)) && isempty(strfind(lower(handles.ScoredEvent(j).EventType), 'sleep'))
                         ChNum=[ChNum i];
                         ChTxt{end+1} = handles.ScoredEvent(j).EventConcept;
                         break;
@@ -924,15 +918,11 @@ if handles.hasAnnotation
             
             for i=1:length(IndexReverse)
                 Temp=Start(i)+handles.ScoredEvent(IndexReverse(i)).Duration;
-%                 if length(ChNum)>1 original
-%                     ChNum = ChNum(1);
-%                 end
-                
                 % do not plot 'Recording Start Time' event and 'Sleep
                 % Staging' events
                 eventType = lower(handles.ScoredEvent(IndexReverse(i)).EventType);
                 eventName = lower(handles.ScoredEvent(IndexReverse(i)).EventConcept);
-                if ~isempty(ChNum) & isempty(strfind(eventType, 'sleep')) & isempty(strfind(eventType, 'staging'))
+                if ~isempty(ChNum) && isempty(strfind(eventType, 'sleep')) && isempty(strfind(eventType, 'staging'))
                     %& isempty(strfind(eventName, 'recording start'))
                     for i=1:length(ChNum)
                         fill([0  Temp Temp 0], ...
@@ -943,8 +933,9 @@ if handles.hasAnnotation
                             [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 -ChNum(i)-3/2]+2 ...
                             ,'Color',[1 1 1]);                
 
-%                          text(0,-ChNum(i)-0.65+2,handles.ScoredEvent(IndexReverse(i)).EventConcept,'FontWeight','bold','FontSize',9);
-                        text(Start(i),-ChNum(i)-0.65+2,ChTxt(i),'FontWeight','bold','FontSize',9)
+                        % text(0,-ChNum(i)-0.65+2,handles.ScoredEvent(IndexReverse(i)).EventConcept,'FontWeight','bold','FontSize',9);
+                        % use ChTxt for montage support
+                        text(0,-ChNum(i)-0.65+2,ChTxt(i),'FontWeight','bold','FontSize',9)
                     end
                 end
             end  
@@ -969,7 +960,6 @@ set(handles.textCurrent30secEpochs,'String',epochsString);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 % Signals Plot
 % FilterPara = evalin('base','FilterPara');
 FilterPara = handles.FilterPara;
@@ -1002,18 +992,11 @@ handles.auto_scale_factor(index) = handles.auto_scale_height./data_range(index);
 guidata(hObject, handles);
 
 % Stage information
-if handles.hasSleepStages && handles.hasAnnotation%%% TODO
-%  if and(handles.hasAnnotation, epoch_length == 30) TODO: comment out
-%  Apr, 15, 2015
+if handles.hasSleepStages && handles.hasAnnotation
+%  if and(handles.hasAnnotation, epoch_length == 30)
+% comment out on Apr, 15, 2015
      % plot sleep states
-     %%% TODO temporal approach to handles index out of range error
-%      if get(handles.SliderTime, 'value') + WindowTime > length(handles.SleepStages)
-%          newVal = length(handles.SleepStages) - WindowTime;
-%      else 
-%          newVal = get(handles.SliderTime, 'value');
-%      end
      Temp=handles.SleepStages([1:WindowTime]+get(handles.SliderTime,'value'));
-%      Temp=handles.SleepStages([1:WindowTime]+newVal);
      Temp = Temp - min(Temp);
      if max(Temp)>0
          Temp = Temp / max(Temp) - 0.25;
@@ -1080,7 +1063,6 @@ set(handles.axes1,'YTick',YTick);
 ylim([-length(handles.Data) 2]);
 set(handles.axes1,'YTickLabel',SelectedChMap([length(SelectedChMap):-1:1]))
 
-
 % Set the xTick based on the window size
 epoch_menu_value = get(handles.PopMenuWindowTime,'value');
 epoch_length = handles.epoch_menu_values(epoch_menu_value);
@@ -1116,10 +1098,7 @@ set(c_axes, 'Color', 'none', 'XColor', [192 192 1]/255, 'XGrid', 'on', ...
     'YColor',[192 192 1]/255, 'YGrid','on','XTickLabel',[], ...
     'YTickLabel',[],'XTick',xtick,'YTick',ytick,'XLim',xlim,'YLim',ylim1);
 
-
-
 % Set epoch numbers
-
 % Update handles
 % (list handle updates here)
 guidata(hObject, handles);
