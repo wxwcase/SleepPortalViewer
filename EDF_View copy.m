@@ -818,8 +818,14 @@ if handles.hasAnnotation
             ChNum = [];
             ChTxt = {}; % signal label that should be displayed, improved support
                         % for displaying montages
-            ChDuration = []; % Debug: duration for each event to annotated in green
-            for j = Index           
+            for j = Index
+%                 for i=1:size(handles.ChInfo.Labels,1) % should change to SelectedCh
+%                     if  strncmp(upper(handles.ChInfo.Labels(i,:)),[upper(handles.ScoredEvent(j).InputCh) ' '],...
+%                             length(handles.ScoredEvent(j).InputCh+1))
+%                         ChNum=[ChNum i]; % should use SelectedChMap to decide index to plot
+%                         break;
+%                     end
+%                 end                
                 fprintf('ScoredEvent: %d, InputCh: %s\n',j, [handles.ScoredEvent(j).InputCh, ' ']);
                 inputChannel = [handles.ScoredEvent(j).InputCh, ' '];
                 inputChannel(inputChannel == ' ') = []; % remove white space
@@ -829,7 +835,6 @@ if handles.hasAnnotation
                         fprintf('<%s, %s>\n', SelectedChMap{i,1}, [handles.ScoredEvent(j).InputCh, ' ']);
                         ChNum=[ChNum i];
                         ChTxt{end+1} = handles.ScoredEvent(j).EventConcept;
-                        ChDuration = [ChDuration handles.ScoredEvent(j).Duration];
                         break;
                     end
                 end                
@@ -838,7 +843,7 @@ if handles.hasAnnotation
             fprintf('\n');
             fprintf('Channel to plot:\n');
             for i=1:length(ChNum)
-                fprintf('[%d %s %s duration: %d]\n', ChNum(i), SelectedChMap{ChNum(i),1}, ChTxt{i}, ChDuration(i));
+                fprintf('[%d %s %s]\n', ChNum(i), SelectedChMap{ChNum(i),1}, ChTxt{i});
             end
             fprintf('\n');
             
@@ -853,6 +858,9 @@ if handles.hasAnnotation
                 % Staging' events
                 eventType = lower(handles.ScoredEvent(Index(i)).EventType);
                 if ~isempty(ChNum) && isempty(strfind(eventType, 'sleep')) && isempty(strfind(eventType, 'staging'))
+                        %& isempty(strfind(eventName, 'recording start'))
+%                         ChNum = ChNum(end); original                    
+                    for i=1:length(ChNum)
                         fill([Start(i)  Temp Temp Start(i)], ...
                             [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 ]+2 ...
                             ,[190 222 205]/255);   %%% TODO: fill green area...
@@ -861,6 +869,7 @@ if handles.hasAnnotation
                             [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 -ChNum(i)-3/2]+2 ...
                             ,'Color',[1 1 1]);
                         text(Start(i),-ChNum(i)-0.65+2,ChTxt(i),'FontWeight','bold','FontSize',9);
+                    end
                 end                
             end                        
         end
@@ -886,27 +895,26 @@ if handles.hasAnnotation
             
             ChNum=[];
             ChTxt = {};
-            ChDuration = []; % Debug: duration for each event to annotated in green
             for j=IndexReverse
+%                 for i=1:size(handles.ChInfo.Labels,1)
+%                     if  strncmp(upper(handles.ChInfo.Labels(i,:)),[upper(handles.ScoredEvent(j).InputCh) ' '],...
+%                             length(handles.ScoredEvent(j).InputCh+1))
+%                         ChNum=[ChNum i];
+%                         break;
+%                     end                    
+%                 end               
                 inputChannel = [handles.ScoredEvent(j).InputCh, ' '];
                 inputChannel(inputChannel == ' ') = []; % remove white space
                 for i=1:size(SelectedChMap, 1)
+%                     if strncmpi(SelectedChMap{i,1}, [handles.ScoredEvent(j).InputCh, ' '],...                            
                     if strncmpi(SelectedChMap{i,1}, inputChannel,... 
                             length(handles.ScoredEvent(j).InputCh+1)) && isempty(strfind(lower(handles.ScoredEvent(j).EventType), 'sleep'))
                         ChNum=[ChNum i];
                         ChTxt{end+1} = handles.ScoredEvent(j).EventConcept;
-                        ChDuration = [ChDuration handles.ScoredEvent(j).Duration];
                         break;
                     end
                 end
             end
-            
-            fprintf('\n');
-            fprintf('Channel to plot:\n');
-            for i=1:length(ChNum)
-                fprintf('[%d %s %s duration: %d]\n', ChNum(i), SelectedChMap{ChNum(i),1}, ChTxt{i}, ChDuration(i));
-            end
-            fprintf('\n');
             
             for i=1:length(IndexReverse)
                 Temp=Start(i)+handles.ScoredEvent(IndexReverse(i)).Duration;
@@ -915,15 +923,20 @@ if handles.hasAnnotation
                 eventType = lower(handles.ScoredEvent(IndexReverse(i)).EventType);
                 eventName = lower(handles.ScoredEvent(IndexReverse(i)).EventConcept);
                 if ~isempty(ChNum) && isempty(strfind(eventType, 'sleep')) && isempty(strfind(eventType, 'staging'))
+                    %& isempty(strfind(eventName, 'recording start'))
+                    for i=1:length(ChNum)
                         fill([0  Temp Temp 0], ...
                             [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 ]+2 ...
                             ,[190 222 205]/255); %%% Fill green bar under selected channel
 
                         plot([0  Temp Temp 0 0], ...
                             [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 -ChNum(i)-3/2]+2 ...
-                            ,'Color',[1 1 1]); 
+                            ,'Color',[1 1 1]);                
 
+                        % text(0,-ChNum(i)-0.65+2,handles.ScoredEvent(IndexReverse(i)).EventConcept,'FontWeight','bold','FontSize',9);
+                        % use ChTxt for montage support
                         text(0,-ChNum(i)-0.65+2,ChTxt(i),'FontWeight','bold','FontSize',9)
+                    end
                 end
             end  
         end
