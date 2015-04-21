@@ -806,6 +806,7 @@ if handles.hasAnnotation
         %        current slider time plus window time
         Index = find(Start>CurrentTime & Start < (CurrentTime+WindowTime));
         Index = Index(Index~=1); % do not record 'Recording Start Time', a.k.a the first scored event
+%         forwardText;
         fprintf('Index<');
         for i=1:length(Index)
             fprintf('#%d: %s ',Index(i), handles.ScoredEvent(Index(i)).EventConcept);
@@ -853,14 +854,19 @@ if handles.hasAnnotation
                 % Staging' events
                 eventType = lower(handles.ScoredEvent(Index(i)).EventType);
                 if ~isempty(ChNum) && isempty(strfind(eventType, 'sleep')) && isempty(strfind(eventType, 'staging'))
-                        fill([Start(i)  Temp Temp Start(i)], ...
+                        forwardFill = fill([Start(i)  Temp Temp Start(i)], ...
                             [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 ]+2 ...
-                            ,[190 222 205]/255);   %%% TODO: fill green area...
+                            ,[190 222 205]/255, 'FaceAlpha', 0.6);   %%% TODO: fill green area...
                     
                         plot([Start(i)  Temp Temp Start(i) Start(i)], ...
                             [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 -ChNum(i)-3/2]+2 ...
-                            ,'Color',[1 1 1]);
-                        text(Start(i),-ChNum(i)-0.65+2,ChTxt(i),'FontWeight','bold','FontSize',9);
+                            ,'Color',[190 222 205]/255);
+                        forwardText = text(Start(i),-ChNum(i)-0.65+2,ChTxt(i),'FontWeight','bold','FontSize',9, 'Parent', handles.axes1);
+                        forwardText.BackgroundColor = 'w';
+                        forwardText.Clipping = 'on';
+                        set(forwardFill,'edgecolor',[191 223 206]/255);
+                        uistack(forwardText, 'up', 2);
+                        uistack(forwardFill, 'down', 1);
                 end                
             end                        
         end
@@ -876,6 +882,7 @@ if handles.hasAnnotation
         IndexReverse = find((EndTime)>=CurrentTime & EndTime <= (CurrentTime+WindowTime));
         IndexReverse = [IndexReverse find(Start<=CurrentTime & EndTime >= (CurrentTime+WindowTime) )];
         IndexReverse = IndexReverse(IndexReverse~=1);
+%         reverseText;
         
         for i=1:length(Index)
             IndexReverse(IndexReverse==Index(i))=[];
@@ -915,15 +922,20 @@ if handles.hasAnnotation
                 eventType = lower(handles.ScoredEvent(IndexReverse(i)).EventType);
                 eventName = lower(handles.ScoredEvent(IndexReverse(i)).EventConcept);
                 if ~isempty(ChNum) && isempty(strfind(eventType, 'sleep')) && isempty(strfind(eventType, 'staging'))
-                        fill([0  Temp Temp 0], ...
+                        reverseFill = fill([0  Temp Temp 0], ...
                             [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 ]+2 ...
-                            ,[190 222 205]/255); %%% Fill green bar under selected channel
+                            ,[190 222 205]/255, 'FaceAlpha', 0.6); %%% Fill green bar under selected channel
 
                         plot([0  Temp Temp 0 0], ...
                             [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 -ChNum(i)-3/2]+2 ...
-                            ,'Color',[1 1 1]); 
-
-                        text(0,-ChNum(i)-0.65+2,ChTxt(i),'FontWeight','bold','FontSize',9)
+                            ,'Color',[190 222 205]/255); 
+    
+                        reverseText = text(0,-ChNum(i)-0.65+2,ChTxt(i),'FontWeight','bold','FontSize',9, 'Parent', handles.axes1);
+                        reverseText.BackgroundColor = 'w';
+                        reverseText.Clipping = 'on';
+                        set(reverseFill,'edgecolor',[191 223 206]/255);
+                        uistack(reverseText, 'up', 2);
+                        uistack(reverseFill, 'down', 1);
                 end
             end  
         end
@@ -954,13 +966,15 @@ FilterPara = handles.FilterPara;
 Counter = 0;
 scaled_data_range = [];
 auto_scale_factor = handles.auto_scale_factor;
+fprintf('uistack number: %d\n', length(Index) + length(IndexReverse));
 for i=1:size(SelectedCh,1)
     % Get data, recenter and plot
     Time = [0:size(handles.Data{i},2)-1]/size(handles.Data{i},2)*WindowTime;
     PlotColor = FilterPara{i}.Color;
     Y = (handles.Data{i}*FilterPara{i}.ScalingFactor-Counter - ...
         mean(handles.Data{i}*FilterPara{i}.ScalingFactor-Counter))+(1-i);
-    plot(Time,Y,'LineWidth',0.01,'color',PlotColor);
+    p = plot(Time,Y,'LineWidth',0.01,'color',PlotColor);
+    uistack(p, 'bottom');
     
     % Not sure is this is still being used, 1/27/2013, dad
     Counter = Counter + 1 ;
@@ -977,6 +991,10 @@ data_range = scaled_data_range(:,2) - scaled_data_range(:,1);
 index = find(data_range ~= 0);
 handles.auto_scale_factor(index) = handles.auto_scale_height./data_range(index);
 guidata(hObject, handles);
+
+forwardText.BackgroundColor = 'w';
+reverseText.BackgroundColor = 'w';
+
 
 % Stage information
 if handles.hasSleepStages && handles.hasAnnotation
