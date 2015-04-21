@@ -1058,8 +1058,11 @@ epoch_menu_num_tick_sections = ...
 increment = 1/epoch_menu_num_tick_sections;
 
 XTick=[0:increment:1]*epoch_length;
-Temp = XTick + get(handles.SliderTime,'value');
-Temp = datestr(Temp/86400,'HH:MM:SS');
+sliderValueInDuration = datenum(handles.FileInfo.StartTime, 'HH.MM.SS') + seconds(get(handles.SliderTime,'value'));
+% Temp = XTick + get(handles.SliderTime,'value');
+Temp = seconds(XTick) + sliderValueInDuration;
+% Temp = datestr(Temp/86400,'HH:MM:SS');
+Temp = datestr(Temp,'HH:MM:SS');
 set(handles.axes1,'XTick',XTick,'xTickLabel',Temp,'xlim',[0 epoch_length]);
 
 hold off
@@ -1481,7 +1484,10 @@ if ~(sum(FileNameAnn == 0)) % if this file name is not empty string, use ~isempt
     handles.eventIndexInCategory(1) = 1;
     for i=2:length(handles.ScoredEvent)
        Temp1 = fix(handles.ScoredEvent(i).Start / 30) + 1;
-       Temp{i - 1}= [num2str(Temp1) ' - ' datestr(handles.ScoredEvent(i).Start/86400,'HH:MM:SS - ') handles.ScoredEvent(i).EventConcept];
+%        Temp{i - 1}= [num2str(Temp1) ' - ' datestr(handles.ScoredEvent(i).Start/86400,'HH:MM:SS - ') handles.ScoredEvent(i).EventConcept];
+       
+       timestring = datestr(datenum(handles.FileInfo.StartTime, 'HH.MM.SS') + seconds(handles.ScoredEvent(i).Start), 'HH:MM:SS');
+       Temp{i - 1}= [num2str(Temp1) ' - ' timestring ' - ' handles.ScoredEvent(i).EventConcept];
        handles.eventIndexInCategory(i - 1) = i;
     end
     set(handles.ListBoxComments, 'string', Temp);
@@ -2189,7 +2195,10 @@ if index_selected(1) == 1
     Temp = cell(1, length(handles.ScoredEvent) - 1);
     for i=2:length(handles.ScoredEvent)
        Temp1 = fix(handles.ScoredEvent(i).Start / 30) + 1;
-       Temp{i - 1}= [num2str(Temp1) ' - ' datestr(handles.ScoredEvent(i).Start/86400,'HH:MM:SS - ') handles.ScoredEvent(i).EventConcept];
+%        Temp{i - 1}= [num2str(Temp1) ' - ' datestr(handles.ScoredEvent(i).Start/86400,'HH:MM:SS - ') handles.ScoredEvent(i).EventConcept];
+       
+       timestring = datestr(datenum(handles.FileInfo.StartTime, 'HH.MM.SS') + seconds(handles.ScoredEvent(i).Start), 'HH:MM:SS');
+       Temp{i - 1}= [num2str(Temp1) ' - ' timestring ' - ' handles.ScoredEvent(i).EventConcept];
        handles.eventIndexInCategory(i - 1) = i;
     end
 %     set(handles.ListBoxComments, 'string', Temp);
@@ -2215,7 +2224,10 @@ else
         eventCategory = handles.ScoredEvent(i).EventType;
         if ismember(eventCategory, values_selected)
             Temp1 = fix(handles.ScoredEvent(i).Start / 30) + 1;
-            Temp{end+1}= [num2str(Temp1) ' - ' datestr(handles.ScoredEvent(i).Start/86400,'HH:MM:SS - ') handles.ScoredEvent(i).EventConcept]; %, 'EventNumber #', num2str(i)];
+%             Temp{end+1}= [num2str(Temp1) ' - ' datestr(handles.ScoredEvent(i).Start/86400,'HH:MM:SS - ') handles.ScoredEvent(i).EventConcept]; %, 'EventNumber #', num2str(i)];
+            
+            timestring = datestr(datenum(handles.FileInfo.StartTime, 'HH.MM.SS') + seconds(handles.ScoredEvent(i).Start), 'HH:MM:SS');
+            Temp{end+1}= [num2str(Temp1) ' - ' timestring ' - ' handles.ScoredEvent(i).EventConcept];
             handles.eventIndexInCategory(j) = i;
             j = j + 1;
         end
@@ -2352,7 +2364,6 @@ function msg=showErrorMessages(errroList)
         disp(msg{i})
     end
 
-    
 function output=parseLine(line)
     output = {};
     message = strsplit(line, ',');

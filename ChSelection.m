@@ -171,7 +171,8 @@ if length(available_channels_string) > 0
             SelectedCh=[SelectedCh;TempCh];
             Flag = 1;
         else
-            warndlg('It is not possible to add these channels');
+%             warndlg('It is not possible to add these channels');
+            warndlg('These are not compatible bipolar channels');
         end
         
     end
