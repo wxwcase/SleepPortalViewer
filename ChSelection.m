@@ -357,17 +357,76 @@ if ischar(FileName) == 1
     load([FilePath FileName]);
     
     % Save loaded structures
-    handles.masterSelectionStruct = handles.masterSelectionStruct;
-    handles.channelSelectionStructIn = handles.channelSelectionStructIn;
-    handles.channelSelectionStruct = handles.channelSelectionStruct;
+    handles.masterSelectionStruct = masterSelectionStruct;
+    handles.channelSelectionStructIn = channelSelectionStructIn;
+    handles.channelSelectionStruct = channelSelectionStruct;
     
     % Update operational variables
     handles.ChSelectionH = channelSelectionStruct.ChSelectionH;
     handles.ChSelectionH = handles.figure1;
-    handles.SelectedCh = channelSelectionStruct.SelectedCh;
-    handles.ChInfo = channelSelectionStruct.ChInfo;
-    handles.FilterPara = channelSelectionStruct.FilterPara;
 
+    %%%%%%%%%%% Process selected channel %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Algorithm:
+    % 1. Get SelectedCh structure in montage 
+    % 2. Translate SelectedCh:
+    %      - For each index in SelectedCh
+    %          * find out the label name in channelSelectionStruct.ChInfo
+    %          * find this label's corresponding index in current 
+    %            viewing EDF file
+    %          * replace the index with the new index(translated)
+    %          * if cannot find a label match, drop the row 
+    % 3. Example:
+    % >>> SelectedCh:       >>> SelectedChTranslatedFinal
+    %      6     0      |             6     0
+    %      7     0      |             7     0
+    %      5     0      |             5     0
+    %      8     0      |             8     0
+    %      3     0      |               .
+    %      4     0      |               .
+    %     13     0      |               .
+    %      9     0      |   
+    %     10     0      |
+    %      1     0      |   
+    %     14     0      |
+    %      2     0      |
+    %     11     0      |             15   0
+    %     12     0      |             12   0
+    % Label name on left side channel 11 corresponding to current viewing
+    % EDF signal label 15 for instance
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    [rows, cols] = size(channelSelectionStruct.SelectedCh);
+    SelectedChTranslated = zeros(rows, cols);
+    for row = 1:rows
+        for col = 1:cols
+            if channelSelectionStruct.SelectedCh(row,col) ~= 0
+                % find the label
+                % fprintf('selected number: %d ', channelSelectionStruct.SelectedCh(row,col));
+                montageLabel = channelSelectionStruct.ChInfo.Labels(channelSelectionStruct.SelectedCh(row,col),:);
+                % fprintf('montage label: %s\n', montageLabel);            
+                % compare the label to the EDF label and record index
+                for j=1:size(handles.ChInfo.Labels, 1)
+                    if strcmp(handles.ChInfo.Labels(j,:), montageLabel)
+                        % fprintf('find match %s at index: %d\n', handles.ChInfo.Labels(j,:), j);
+                        SelectedChTranslated(row, col) = j;
+                    end
+                end
+            end            
+        end
+    end
+    % remove rows that start with index 0: cannot find corresponding label
+    % in EDF
+    SelectedChTranslatedFinal = [];
+    j = 1;
+    for i=1:rows % loop through row
+        if SelectedChTranslated(i, 1) ~= 0
+            SelectedChTranslatedFinal(j,:) = SelectedChTranslated(i,:);
+            j = j + 1;
+        end
+    end
+    handles.SelectedCh = SelectedChTranslatedFinal;
+    %%%%%%%%%%% Process selected channel end %%%%%%%%%%%%%%%%%%
+
+    handles.FilterPara = channelSelectionStruct.FilterPara;    
     handles.FlagSelectedCh = channelSelectionStruct.FlagSelectedCh;
     handles.FlagChInfo = channelSelectionStruct.FlagChInfo;    
     
@@ -441,8 +500,6 @@ channelSelectionStruct.FlagChInfo = handles.FlagChInfo;
 % Replace and save output structure
 handles.channelSelectionStructOut = channelSelectionStruct;
 guidata(hObject, handles);
-
-
 
 
 % --- Executes on selection change in MainList2.

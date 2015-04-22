@@ -853,7 +853,8 @@ if handles.hasAnnotation
                 % do not plot 'Recording Start Time' event and 'Sleep
                 % Staging' events
                 eventType = lower(handles.ScoredEvent(Index(i)).EventType);
-                if ~isempty(ChNum) && isempty(strfind(eventType, 'sleep')) && isempty(strfind(eventType, 'staging'))
+                if ~isempty(ChNum) && isempty(strfind(eventType, 'sleep')) && isempty(strfind(eventType, 'staging'))...
+                    && i <= length(ChNum)
                         forwardFill = fill([Start(i)  Temp Temp Start(i)], ...
                             [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 ]+2 ...
                             ,[190 222 205]/255, 'FaceAlpha', 0.6);   %%% TODO: fill green area...
@@ -966,7 +967,7 @@ FilterPara = handles.FilterPara;
 Counter = 0;
 scaled_data_range = [];
 auto_scale_factor = handles.auto_scale_factor;
-fprintf('uistack number: %d\n', length(Index) + length(IndexReverse));
+% fprintf('uistack number: %d\n', length(Index) + length(IndexReverse));
 for i=1:size(SelectedCh,1)
     % Get data, recenter and plot
     Time = [0:size(handles.Data{i},2)-1]/size(handles.Data{i},2)*WindowTime;
