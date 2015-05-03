@@ -22,7 +22,7 @@ function varargout = EDF_View(varargin)
 
 % Edit the above text to modify the response to help EDF_View
 
-% Last Modified by GUIDE v2.5 26-Jan-2015 16:52:12
+% Last Modified by GUIDE v2.5 22-Apr-2015 20:38:58
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -308,6 +308,7 @@ try
 %             ErrMsg = [ErrMsg, belClass.errList(i)]; %%% TODO to be changed
 %         end  
         % errordlg(ErrMsg, 'Warning', 'modal');
+        
         warndlg(ErrMsg, belClass.errSummary, 'modal');
     end
     if belClass.mostSeriousErrValue > 4
@@ -765,7 +766,7 @@ WindowTime = handles.epoch_menu_values(popup_id);
 
 SelectedCh = handles.SelectedCh;
 
-% Identify channels to plot   %%% TODO
+% Identify channels to plot
 % SelectedChMap is what appears on the viewer signal labels
 SelectedChMap = cell(length(SelectedCh), 1);
 for i=1:size(SelectedCh,1)
@@ -862,7 +863,7 @@ if handles.hasAnnotation
                         plot([Start(i)  Temp Temp Start(i) Start(i)], ...
                             [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 -ChNum(i)-3/2]+2 ...
                             ,'Color',[190 222 205]/255);
-                        forwardText = text(Start(i),-ChNum(i)-0.65+2,ChTxt(i),'FontWeight','bold','FontSize',9, 'Parent', handles.axes1);
+                        forwardText = text(Start(i),-ChNum(i)-0.64+2,ChTxt(i),'FontWeight','bold','FontSize',9, 'Parent', handles.axes1);
                         forwardText.BackgroundColor = 'w';
                         forwardText.Clipping = 'on';
                         set(forwardFill,'edgecolor',[191 223 206]/255);
@@ -882,6 +883,7 @@ if handles.hasAnnotation
         % find end index in current window
         IndexReverse = find((EndTime)>=CurrentTime & EndTime <= (CurrentTime+WindowTime));
         IndexReverse = [IndexReverse find(Start<=CurrentTime & EndTime >= (CurrentTime+WindowTime) )];
+%         IndexReverse = [IndexReverse find(Start<=CurrentTime & EndTime>=CurrentTime & EndTime <= (CurrentTime+WindowTime))];
         IndexReverse = IndexReverse(IndexReverse~=1);
 %         reverseText;
         
@@ -890,17 +892,20 @@ if handles.hasAnnotation
         end
         
         Start = Start(IndexReverse)-CurrentTime;
+%         Start = Start(Start>=0);
         if ~isempty(IndexReverse)
             
             ChNum=[];
             ChTxt = {};
             ChDuration = []; % Debug: duration for each event to annotated in green
+            IndexReverse2Plot = [];
             for j=IndexReverse
                 inputChannel = [handles.ScoredEvent(j).InputCh, ' '];
                 inputChannel(inputChannel == ' ') = []; % remove white space
                 for i=1:size(SelectedChMap, 1)
                     if strncmpi(SelectedChMap{i,1}, inputChannel,... 
                             length(handles.ScoredEvent(j).InputCh+1)) && isempty(strfind(lower(handles.ScoredEvent(j).EventType), 'sleep'))
+                        IndexReverse2Plot=[IndexReverse2Plot j];
                         ChNum=[ChNum i];
                         ChTxt{end+1} = handles.ScoredEvent(j).EventConcept;
                         ChDuration = [ChDuration handles.ScoredEvent(j).Duration];
@@ -910,19 +915,28 @@ if handles.hasAnnotation
             end
             
             fprintf('\n');
-            fprintf('Channel to plot:\n');
+            fprintf('Channel to plot in reverse:\n');
             for i=1:length(ChNum)
                 fprintf('[%d %s %s duration: %d]\n', ChNum(i), SelectedChMap{ChNum(i),1}, ChTxt{i}, ChDuration(i));
             end
             fprintf('\n');
             
-            for i=1:length(IndexReverse)
-                Temp=Start(i)+handles.ScoredEvent(IndexReverse(i)).Duration;
+            for i=1:length(IndexReverse2Plot)
+                % Set boundaries to plot
+                Temp=Start(i)+handles.ScoredEvent(IndexReverse2Plot(i)).Duration;
+                if Temp < 0.001 && Temp > 0
+                    Temp = 0;
+                elseif Temp > WindowTime
+                    Temp = WindowTime;
+                end
+                
                 % do not plot 'Recording Start Time' event and 'Sleep
                 % Staging' events
-                eventType = lower(handles.ScoredEvent(IndexReverse(i)).EventType);
-                eventName = lower(handles.ScoredEvent(IndexReverse(i)).EventConcept);
+                eventType = lower(handles.ScoredEvent(IndexReverse2Plot(i)).EventType);
+                eventName = lower(handles.ScoredEvent(IndexReverse2Plot(i)).EventConcept);
+                fprintf('i=%d eventName=%s\n', i, eventName);
                 if ~isempty(ChNum) && isempty(strfind(eventType, 'sleep')) && isempty(strfind(eventType, 'staging'))
+                    if Temp > 0
                         reverseFill = fill([0  Temp Temp 0], ...
                             [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 ]+2 ...
                             ,[190 222 205]/255, 'FaceAlpha', 0.6); %%% Fill green bar under selected channel
@@ -931,12 +945,13 @@ if handles.hasAnnotation
                             [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 -ChNum(i)-3/2]+2 ...
                             ,'Color',[190 222 205]/255); 
     
-                        reverseText = text(0,-ChNum(i)-0.65+2,ChTxt(i),'FontWeight','bold','FontSize',9, 'Parent', handles.axes1);
+                        reverseText = text(0,-ChNum(i)-0.64+2,ChTxt(i),'FontWeight','bold','FontSize',9, 'Parent', handles.axes1);
                         reverseText.BackgroundColor = 'w';
                         reverseText.Clipping = 'on';
                         set(reverseFill,'edgecolor',[191 223 206]/255);
                         uistack(reverseText, 'up', 2);
                         uistack(reverseFill, 'down', 1);
+                    end
                 end
             end  
         end
@@ -998,16 +1013,22 @@ reverseText.BackgroundColor = 'w';
 
 
 % Stage information
+%%% TODO
+% if currentTime is larger than the max of sleepStage, then should not
+% display or display wake
 if handles.hasSleepStages && handles.hasAnnotation
-%  if and(handles.hasAnnotation, epoch_length == 30)
-% comment out on Apr, 15, 2015
      % plot sleep states
-     Temp=handles.SleepStages([1:WindowTime]+get(handles.SliderTime,'value'));
+     currentTime = get(handles.SliderTime,'value');
+     
+     idx = [1:WindowTime]+currentTime;
+     idx(idx>length(handles.SleepStages))=length(handles.SleepStages);
+     Temp=handles.SleepStages(idx);
+%      Temp=handles.SleepStages([1:WindowTime]+get(handles.SliderTime,'value'));
      Temp = Temp - min(Temp);
      if max(Temp)>0
          Temp = Temp / max(Temp) - 0.25;
      end
-     plot([0:length(Temp)-1],Temp+1,'linewidth',1.5,'color','k')
+     plot([0:length(Temp)-1],Temp+1,'linewidth',1.5,'color','k') % 'k': black
      
      % comment for sleep stage
      if sum(abs(diff(Temp))>0)
@@ -1015,7 +1036,11 @@ if handles.hasSleepStages && handles.hasAnnotation
          Index = [1 find(diff(Temp))+1];
          
          for i=1:length(Index)
-             TempState = (handles.SleepStages(get(handles.SliderTime,'value')+Index(i)));
+             if currentTime+Index(i) > length(handles.SleepStages)
+                 TempState = 'W';
+             else
+                 TempState = (handles.SleepStages(currentTime+Index(i)));
+             end
              switch TempState
                  case 5
                      TempState = 'W';
@@ -1039,7 +1064,13 @@ if handles.hasSleepStages && handles.hasAnnotation
          end
          
      else
-         TempState = handles.SleepStages(get(handles.SliderTime,'value')+1);
+         idx = currentTime+1;
+         if idx > length(handles.SleepStages)
+             TempState = 'W';
+         else
+%          TempState = handles.SleepStages(get(handles.SliderTime,'value')+1);
+            TempState = handles.SleepStages(idx);
+         end
          switch TempState
              case 5
                  TempState = 'W';
@@ -1234,22 +1265,34 @@ if isfield(handles, 'ScoredEvent') % added check field(handles.ScoredEvent)
 
     if CurrentPopMenuWindowTime > 0 %%%[Original] has problems TODO
         Time = handles.ScoredEvent(SelNum).Start-CurrentPopMenuWindowTime/2;%
+        if Time < 0
+            Time = handles.ScoredEvent(SelNum).Start; % DEBUG
+        end
     else
         Time = handles.ScoredEvent(SelNum).Start; %[Original]
     end
-    set(handles.SliderTime,'value',fix(Time)); %[Original]
+    
+    Time=fix(Time);
+    maxtime = get(handles.SliderTime, 'max');
+    if Time>maxtime
+        Time = maxtime;
+    end
+%     set(handles.SliderTime,'value',fix(Time)); %[Original]
+    set(handles.SliderTime,'value', Time);
+    
     fprintf('Selected slider value: #: %d\n', get(handles.SliderTime, 'value'));
+    fprintf('Selected slider max value: #: %d\n', get(handles.SliderTime, 'max'));
     handles = UpDatePlot(hObject, handles);
     guidata(hObject, handles);
 end
 
-if get(handles.SliderTime, 'value') <= length(handles.SleepStages) - WindowTime
-    % Fixed bug: updataPlot error issue(sliderTime value exceeds sleepstages length)
+% if get(handles.SliderTime, 'value') <= length(handles.SleepStages) - WindowTime
+    %%%TODO Fixed bug: updataPlot error issue(sliderTime value exceeds sleepstages length)
     handles=DataLoad(handles);
     guidata(hObject,handles);
     handles = UpDatePlot(hObject,handles);
     guidata(hObject, handles);
-end
+% end
 
 %-------------------------------------------------- figure1_CloseRequestFcn
 % --- Executes when user attempts to close figure1.
@@ -1890,7 +1933,7 @@ clc
 %      0.91, 0.753369272237197];
 extendedSignalAxisPos = ...
     [0.05859375, 0.04851752021563342, ...
-     0.9244791666666666, 0.8827493261455526];
+     0.9244791666666666, 0.8727493261455526];
 % extendedSliderPos = ...
 %     [0.06411258795934324, 0.006738544474393531, ...
 %      0.924941360437842,   0.02425876010781671];
@@ -1900,10 +1943,6 @@ extendedSliderPos = ...
 extendedControlPanelPos = ...
     [0.05794270833333333, 0.9272237196765499,...
      0.7877604166666666, 0.0714285714285714];
-
- % 0.9622641509433962
- % 0.8140161725067386
- % 0.14824798
 
 handleArray = [handles.axes2, handles.ListBoxComments,...
         handles.pmAnnotations, handles.pushbutton1, handles.ListBoxPatientInfo,...

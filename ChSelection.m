@@ -410,7 +410,7 @@ if ischar(FileName) == 1
                         SelectedChTranslated(row, col) = j;
                     end
                 end
-            end            
+            end
         end
     end
     % remove rows that start with index 0: cannot find corresponding label
@@ -426,7 +426,7 @@ if ischar(FileName) == 1
     handles.SelectedCh = SelectedChTranslatedFinal;
     %%%%%%%%%%% Process selected channel end %%%%%%%%%%%%%%%%%%
 
-    handles.FilterPara = channelSelectionStruct.FilterPara;    
+    handles.FilterPara = channelSelectionStruct.FilterPara; 
     handles.FlagSelectedCh = channelSelectionStruct.FlagSelectedCh;
     handles.FlagChInfo = channelSelectionStruct.FlagChInfo;    
     
@@ -451,6 +451,8 @@ channelSelectionStructOut = handles.channelSelectionStructOut;
 
 % Update channel selection structure
 channelSelectionStruct.SelectedCh = handles.SelectedCh;
+
+% These two struct are not needed for applying montage
 channelSelectionStruct.ChInfo = handles.ChInfo;
 channelSelectionStruct.FilterPara = handles.FilterPara;
 
