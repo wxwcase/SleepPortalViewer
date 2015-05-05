@@ -830,7 +830,7 @@ if handles.hasAnnotation
                             length(handles.ScoredEvent(j).InputCh+1)) & isempty(strfind(lower(handles.ScoredEvent(j).EventType), 'sleep'))
                         fprintf('<%s, %s>\n', SelectedChMap{i,1}, [handles.ScoredEvent(j).InputCh, ' ']);
                         ChNum=[ChNum i];
-                        % handle text
+                        % handle SpO2 event annotation display
                         ChTxt{end+1} = handles.ScoredEvent(j).EventConcept;
                         if ~isempty(handles.ScoredEvent(j).SpO2Baseline) &&... 
                             ~isempty(handles.ScoredEvent(j).SpO2Nadir)
@@ -840,7 +840,7 @@ if handles.hasAnnotation
                             ChTxt{end}=strcat(ChTxt{end}, ':');
                             ChTxt{end}=strcat(ChTxt{end}, deltaStr);
                             ChTxt{end}=strcat(ChTxt{end}, '%');
-                        end                        
+                        end
                         ChDuration = [ChDuration handles.ScoredEvent(j).Duration];
                         break;
                     end
@@ -917,7 +917,17 @@ if handles.hasAnnotation
                             length(handles.ScoredEvent(j).InputCh+1)) && isempty(strfind(lower(handles.ScoredEvent(j).EventType), 'sleep'))
                         IndexReverse2Plot=[IndexReverse2Plot j];
                         ChNum=[ChNum i];
+                        % handle SpO2 event annotation display
                         ChTxt{end+1} = handles.ScoredEvent(j).EventConcept;
+                        if ~isempty(handles.ScoredEvent(j).SpO2Baseline) &&... 
+                            ~isempty(handles.ScoredEvent(j).SpO2Nadir)
+                            delta = (handles.ScoredEvent(j).SpO2Baseline - handles.ScoredEvent(j).SpO2Nadir) /...
+                                handles.ScoredEvent(j).SpO2Baseline;
+                            deltaStr = sprintf('%.0f', delta * 100);
+                            ChTxt{end}=strcat(ChTxt{end}, ':');
+                            ChTxt{end}=strcat(ChTxt{end}, deltaStr);
+                            ChTxt{end}=strcat(ChTxt{end}, '%');
+                        end
                         ChDuration = [ChDuration handles.ScoredEvent(j).Duration];
                         break;
                     end
