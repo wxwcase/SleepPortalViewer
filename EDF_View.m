@@ -649,7 +649,11 @@ if handles.hasAnnotation
     end
     StartTimes = StartTimes - get(handles.SliderTime, 'value');
     [StartTimes, Index] = min(abs(StartTimes));
-    set(handles.ListBoxComments, 'value', Index);
+    if Index < length(handles.ScoredEvent)
+        set(handles.ListBoxComments, 'value', Index); % TODO 
+    else
+        set(handles.ListBoxComments, 'value', length(handles.ScoredEvent)-1)
+    end
 end
 
 % Get, update, and display data
@@ -2040,8 +2044,12 @@ if handles.EDF_LOADED == 1
                 Temp(i)=handles.ScoredEvent(i).Start;
             end
             Temp = Temp - get(handles.SliderTime,'value');
-            [Temp Index]=min(abs(Temp));
-            set(handles.ListBoxComments,'value',Index);
+            [Temp, Index]=min(abs(Temp));
+            if Index < length(handles.ScoredEvent) % TODO
+                set(handles.ListBoxComments,'value',Index);
+            else
+                set(handles.ListBoxComments, 'value', length(handles.ScoredEvent)-1)
+            end
         end
         
         handles=DataLoad(handles);
@@ -2083,7 +2091,11 @@ if handles.EDF_LOADED == 1
             end
             Temp = Temp - get(handles.SliderTime,'value');
             [Temp Index]=min(abs(Temp));
-            set(handles.ListBoxComments,'value',Index);
+            if Index < length(handles.ScoredEvent) % TODO
+                set(handles.ListBoxComments,'value',Index);
+            else 
+                set(handles.ListBoxComments, 'value', length(handles.ScoredEvent)-1)
+            end
         end
         
         handles=DataLoad(handles);
@@ -2161,7 +2173,11 @@ if handles.EDF_LOADED == 1
         end
         Temp = Temp - get(handles.SliderTime,'value');
         [Temp Index]=min(abs(Temp));
-        set(handles.ListBoxComments,'value',Index);
+        if Index < length(handles.ScoredEvent)
+            set(handles.ListBoxComments,'value',Index);
+        else
+            set(handles.ListBoxComments, 'value', length(handles.ScoredEvent)-1)
+        end
     end
     
     handles=DataLoad(handles);
