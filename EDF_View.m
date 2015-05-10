@@ -1047,12 +1047,15 @@ if handles.hasSleepStages && handles.hasAnnotation
      idx = [1:WindowTime]+currentTime;
      idx(idx>length(handles.SleepStages))=length(handles.SleepStages);
      Temp=handles.SleepStages(idx);
-%      Temp=handles.SleepStages([1:WindowTime]+get(handles.SliderTime,'value'));
+     
      Temp = Temp - min(Temp);
      if max(Temp)>0
          Temp = Temp / max(Temp) - 0.25;
      end
+     
      plot([0:length(Temp)-1],Temp+1,'linewidth',1.5,'color','k') % 'k': black
+     fprintf('handles.SleepStage length: %d\n', length(handles.SleepStages));
+     fprintf('slider length: %d\n',get(handles.SliderTime, 'max'));
      
      % comment for sleep stage
      if sum(abs(diff(Temp))>0)
@@ -2375,11 +2378,23 @@ function handles = plotHistogram(hObject, handles)
 % global hasSleepStages;
     axes(handles.axes2)
     cla
-    hold off      
-    plot(handles.SleepStages, 'LineWidth', 1.5, 'color','k');
+    hold off
+    lightsOnNum = get(handles.SliderTime, 'max')- length(handles.SleepStages);
+    Temp = handles.SleepStages;
+    Temp = [Temp, zeros(1,lightsOnNum)+5];
+%     plot(handles.SleepStages, 'LineWidth', 1.5, 'color','k');
+    plot(Temp, 'LineWidth', 1.5, 'color','k');
     hold on
-    set(handles.axes2,'xTick',[0 length(handles.SleepStages)],'xlim',[0 length(handles.SleepStages)],'xticklabel',''...
-        ,'fontweight','bold','yTick',[0:5],'ylim',[-0.5 5.5],'color',[205 224 247]/255,'yTickLabel',{'R','','N3','','N1','W'})
+%     set(handles.axes2,'xTick',[0 length(handles.SleepStages)],...
+%                       'xlim',[0 length(handles.SleepStages)],...
+      set(handles.axes2,'xTick',[0 get(handles.SliderTime, 'max')],...
+                      'xlim',[0 get(handles.SliderTime, 'max')],...
+                      'xticklabel','',...
+                      'fontweight','bold',...
+                      'yTick',[0:5],...
+                      'ylim',[-0.5 5.5],...
+                      'color',[205 224 247]/255,...
+                      'yTickLabel',{'R','','N3','','N1','W'})
     hold on
     
     % Higlight current window in historgram
