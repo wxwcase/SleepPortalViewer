@@ -831,7 +831,7 @@ if handles.hasAnnotation
                 inputChannel(inputChannel == ' ') = []; % remove white space
                 for i=1:size(SelectedChMap, 1)
                     if strncmpi(SelectedChMap{i,1}, inputChannel,...
-                            length(handles.ScoredEvent(j).InputCh+1)) & isempty(strfind(lower(handles.ScoredEvent(j).EventType), 'sleep'))
+                            length(handles.ScoredEvent(j).InputCh+1)) & isempty(strfind(lower(handles.ScoredEvent(j).EventType), 'stages'))
                         fprintf('<%s, %s>\n', SelectedChMap{i,1}, [handles.ScoredEvent(j).InputCh, ' ']);
                         ChNum=[ChNum i];
                         % handle SpO2 event annotation display
@@ -868,7 +868,7 @@ if handles.hasAnnotation
                 % do not plot 'Recording Start Time' event and 'Sleep
                 % Staging' events
                 eventType = lower(handles.ScoredEvent(Index(i)).EventType);
-                if ~isempty(ChNum) && isempty(strfind(eventType, 'sleep')) && isempty(strfind(eventType, 'staging'))...
+                if ~isempty(ChNum) && isempty(strfind(eventType, 'sleep')) && isempty(strfind(eventType, 'stages'))...
                     && i <= length(ChNum)
                         forwardFill = fill([Start(i)  Temp Temp Start(i)], ...
                             [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 ]+2 ...
@@ -918,7 +918,7 @@ if handles.hasAnnotation
                 inputChannel(inputChannel == ' ') = []; % remove white space
                 for i=1:size(SelectedChMap, 1)
                     if strncmpi(SelectedChMap{i,1}, inputChannel,... 
-                            length(handles.ScoredEvent(j).InputCh+1)) && isempty(strfind(lower(handles.ScoredEvent(j).EventType), 'sleep'))
+                            length(handles.ScoredEvent(j).InputCh+1)) && isempty(strfind(lower(handles.ScoredEvent(j).EventType), 'stages'))
                         IndexReverse2Plot=[IndexReverse2Plot j];
                         ChNum=[ChNum i];
                         % handle SpO2 event annotation display
@@ -959,7 +959,7 @@ if handles.hasAnnotation
                 eventType = lower(handles.ScoredEvent(IndexReverse2Plot(i)).EventType);
                 eventName = lower(handles.ScoredEvent(IndexReverse2Plot(i)).EventConcept);
                 fprintf('i=%d eventName=%s\n', i, eventName);
-                if ~isempty(ChNum) && isempty(strfind(eventType, 'sleep')) && isempty(strfind(eventType, 'staging'))
+                if ~isempty(ChNum) && isempty(strfind(eventType, 'sleep')) && isempty(strfind(eventType, 'stages'))
                     if Temp > 0
                         reverseFill = fill([0  Temp Temp 0], ...
                             [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 ]+2 ...
@@ -1080,7 +1080,7 @@ if handles.hasSleepStages && handles.hasAnnotation
                  case 1
                      TempState = 'N4';
                  case 0
-                     TempState = 'N5';
+                     TempState = 'REM';
              end
              
              if Temp(Index(i))>0
@@ -1110,7 +1110,7 @@ if handles.hasSleepStages && handles.hasAnnotation
              case 1
                  TempState = 'N4';
              case 0
-                 TempState = 'N5';
+                 TempState = 'REM';
          end
          
          text(WindowTime/2,1.5,['State ' TempState],'fontweight','bold')
