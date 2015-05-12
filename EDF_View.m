@@ -1814,8 +1814,18 @@ if (Loc(3)>yLim(1) & Loc(3)<yLim(2) & Loc(1)>xLim(1) & Loc(1)<xLim(2))
             Temp(i)=handles.ScoredEvent(i).Start;
         end
         Temp = Temp - get(handles.SliderTime,'value');
-        [Temp Index]=min(abs(Temp));
-        set(handles.ListBoxComments,'value',Index);
+        [Temp, Index]=min(abs(Temp));
+        
+        % handles current location exceeds last event in the
+        % ListBoxComments
+        str = get(handles.ListBoxComments, 'String');
+        lc = numel(str);
+        if Index < lc
+            set(handles.ListBoxComments,'value',Index);
+        else
+            Index = lc;
+            set(handles.ListBoxComments,'value',Index);
+        end
     end
     
     handles=DataLoad(handles);
