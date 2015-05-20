@@ -5,7 +5,7 @@ classdef loadPSGAnnotationClass
         % Input
         fileName = ''; % eg: '123.edf'   
         vendorName = ''; % eg: 'Embla'
-        sleepStageValues = []; %%% TODO issue, 2015-2-18
+        sleepStageValues = []; 
         annotationType = ''; % eg: 'PSGAnnotation', 'CMPStudyConfig'
         isSDO = 0;
         
@@ -70,14 +70,14 @@ classdef loadPSGAnnotationClass
         %--------------------------------------------------------- loadFile
         function obj = loadFile(obj)
             % Load Grass file
-            fileName = obj.fileName;
-            fid = fopen(fileName);      
+            filename = obj.fileName;
+            fid = fopen(filename);      
             
             % Process if file is open
             if fid > 0
                 fileTxt = fread(fid)';
             else
-                msg = sprintf('Could not open %s', fileName);
+                msg = sprintf('Could not open %s', filename);
                 error(msg);
             end
             
@@ -88,7 +88,7 @@ classdef loadPSGAnnotationClass
             
             % Pass loaded information to object
             try
-                xdoc = xmlread(fileName);
+                xdoc = xmlread(filename);
             catch
                 errMsg{end+1} = 'Failed to read XML file';
                 error('Failed to read XML file %s.',xmlfile);
@@ -293,7 +293,6 @@ classdef loadPSGAnnotationClass
                             else
                                 % if this event is stage event, then do not
                                 % include in the handles.ScoredEvent list
-%%%                                 if ~obj.isStageEvent(ithScoredEvent)
                                 ScoredEvent(end+1) = ithScoredEvent;
                             end                            
                         end   
@@ -323,7 +322,6 @@ classdef loadPSGAnnotationClass
                 isValid = 0;
                 eventErrMsg = strcat(eventErrMsg, 'Duration empty;');
             end
-            % if strcmp(eventStruct.EventConcept, 'SRO:SpO2Desaturation')
             if strcmp(eventStruct.EventConcept, 'Desaturation')
                 if isempty(eventStruct.SpO2Nadir)
                     isValid = 0;
@@ -394,80 +392,6 @@ classdef loadPSGAnnotationClass
     end
     %------------------------------------------------- Dependent Properties
     methods(Static)        
-        %--------------------------------------------- Read in Events(json)
-        function events=readMapConfig(fname)
-        % 2014-12-3, Read PSG configuration file in the default directory
-            events = {};
-            % stages = {}; % to be returned
-            try
-                fid = fopen(fname);
-                raw = fread(fid, inf);
-                str = char(raw');
-                fclose(fid);
-                % Parse scored event in the json file to scored event data
-                % structure, eg:
-                % {
-                %     "EventType":"Staging",
-                %     "Event":"1",
-                %     "EventConcept":"SRO:Stage1Sleep",
-                %     "Notes":"Epoch scored as Stage 1 Sleep"
-                % }
-                eventData = JSON.parse(str);
-                for i = 1:length(eventData)
-                    % if strcmp(eventData(i).EventType, 'Staging')
-                    %     stages{end+1} = eventData(i).EventConcept
-                    % end
-                    events{end+1} = eventData{i}.EventConcept;
-                end
-            catch exception
-                disp(exception)
-            end
-        end
-        %--------------------------------------------- Read in Events(csv)
-        function [eventMap, events, stages]=testLoadCSV(mappingFile)
-            %testLoadCSV Load PSG annotation event mapping
-            %   Read from csv, and output list of events and stages
-            %   check loading csv
-            eventMap = containers.Map('KeyType', 'char', 'ValueType', 'char');
-            events = [];
-            stages = [];
-            try
-               fid = fopen(mappingFile, 'r');
-               tline = fgetl(fid);
-            while ischar(tline)
-               % use two "%*s" because in some csv file, the fourth(last) column
-               % contains ',' which is the delimiter in csv file
-               line = textscan(tline, '%s %s %s %*s %*s', 'delimiter', ',', 'CollectOutput', false);       
-               eventType = line{1}{1};
-               eventConcept = line{3}{1};
-               
-               if strcmp(eventType, 'EpochLength') == 0 & strcmp(eventType, 'EventType') == 0
-                   events{end+1} = eventConcept;
-                   if ~isKey(eventMap, eventConcept)
-                       eventMap(eventConcept) = eventType;
-                   end
-                   if strcmp(eventType, 'Staging') == 1 | strcmp(eventType, 'Sleep Staging') == 1
-                       stages{end+1} = eventConcept;
-                   end
-               end
-               
-               tline = fgetl(fid);
-            end
-
-            events = unique(events);
-            stages = unique(stages);
-   
-            fclose(fid);
-            catch exception
-                disp(exception)
-                events = [];
-                stages = [];
-            end
-        end   
-        %--------------------------------------------- set mapping file
-        function setMappingFile()
-            
-        end
         %---------------------------------------------------- GetEventTimes  
         function value = GetEventTimes(eventLabel, EventList, EventStart)
            % Return the time of the specified event

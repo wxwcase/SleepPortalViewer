@@ -266,10 +266,6 @@ function MenuOpenEDF_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-%%% TODO: 
-%%% 1. If handles.EDF_CHECK == 0, disable gui compoenent that calls
-%%%     responsible callbacks
-%%% 2. Using configuration file to do the tasks
 handles = guidata(hObject);
 
 global needOpenDialog;
@@ -299,15 +295,11 @@ try
     belClass = belClass.blockEdfLoad; 
     belClass = belClass.CheckEdf;
     fprintf('Checking: %s\n', [FilePath FileName]);
-    % belClass.DispCheck % Access checking information you want to look at lines 321-327 on BlockEdfLoadClass
+    % Access checking information: lines 321-327 on BlockEdfLoadClass
     if ~isempty(belClass.errMsg) && belClass.mostSeriousErrValue <= 4
         belClass.DispCheck 
         ErrMsg = []; %belClass.errSummary;
         ErrMsg = [ErrMsg, showErrorMessages(belClass.errList)];
-%         for i=1:length(belClass.errList)            
-%             ErrMsg = [ErrMsg, belClass.errList(i)]; %%% TODO to be changed
-%         end  
-        % errordlg(ErrMsg, 'Warning', 'modal');
         
         warndlg(ErrMsg, belClass.errSummary, 'modal');
     end
@@ -351,7 +343,7 @@ if ~(length(FilePath)==1)
     
     % handles.ChInfo.nr is a vector contains numbers of samples in each
     % data record
-    numOfChannels = length(handles.ChInfo.nr); % numOfSamples => numOfChannels
+    numOfChannels = length(handles.ChInfo.nr);
 
     % Initialize to be selected channels
     % Temp = ns x 2 structure, <index of channel, 1/0 (not) selected>
@@ -387,25 +379,19 @@ if ~(length(FilePath)==1)
     
     handles.FilterPara = FilterPara;        
     
-    %[Original] Temp = []; Temp => EdfTextHeader;need comment TODO, go back
     % Header in an array, EdfHeaderDescriptionArray
     EdfHeaderDescriptionArray = [];
     
-    %%% change variable 'TempText' to reflect the meaning
     TempText = handles.FileInfo.LocalPatientID;
     TempText(TempText==32)=[];
-    %[Original] Temp, Temp => EdfTextHeader
     EdfHeaderDescriptionArray{1}=['Patient Name : ' TempText];
     
     TempText = handles.FileInfo.LocalRecordID;
     TempText(TempText==32)=[];
-    %[Original] Temp, Temp => EdfTextHeader
     EdfHeaderDescriptionArray{2}=['Patient ID   : ' TempText];
-    %[Original] Temp, Temp => EdfTextHeader
     EdfHeaderDescriptionArray{3}=['Start Date   : ' handles.FileInfo.StartDate];
     Temp1=handles.FileInfo.StartTime;
     Temp1([3 6])='::';
-    %[Original] Temp, Temp => EdfTextHeader
     EdfHeaderDescriptionArray{4}=['Start Time   : ' Temp1];
     
     
@@ -413,6 +399,7 @@ if ~(length(FilePath)==1)
     
     for i=1:length(handles.ChInfo.nr)
         Counter = Counter + 1;
+        % Temp1: signal label
         Temp1 = handles.ChInfo.Labels(i,:);
         if ~isempty(Temp1)
             while Temp1(end)==32 & length(Temp1) > 1
@@ -429,8 +416,7 @@ if ~(length(FilePath)==1)
         
         SamplingRate = fix(handles.ChInfo.nr(i) / handles.FileInfo.DataRecordDuration);
         
-        %[Original] Temp, Temp => EdfHeaderDescriptionArray
-        EdfHeaderDescriptionArray{Counter} = [Temp1 ' : ' num2str(handles.ChInfo.PhyMin(i)) ' to ' ...
+                EdfHeaderDescriptionArray{Counter} = [Temp1 ' : ' num2str(handles.ChInfo.PhyMin(i)) ' to ' ...
             num2str(handles.ChInfo.PhyMax(i)) ' ' Temp2 ' (' num2str(handles.ChInfo.DiMin(i)) ' to ' ...
             num2str(handles.ChInfo.DiMax(i)) '), SR : ' num2str(SamplingRate)];
         
@@ -443,10 +429,8 @@ if ~(length(FilePath)==1)
     set(handles.ListBoxPatientInfo,'string',edfHeaderString);
     
     % Get file description, which contains name/date/bytes/isdir/datenum
-    %[Original] Temp, Temp => EdfFileAttributes
     EdfFileAttributes = dir(handles.FileName);
-    %%%[Original] Temp, Temp => EdfFileAttributes; TODO: determine the total
-    %time later from EDF file
+    %TODO: determine the total time later from EDF file
     handles.TotalTime = (EdfFileAttributes.bytes - handles.FileInfo.HeaderNumBytes) ...
         / 2  / sum(handles.ChInfo.nr) * handles.FileInfo.DataRecordDuration;
     
@@ -735,7 +719,6 @@ end
 
 %--------------------------------------------------------------- UpDatePlot
 function handles = UpDatePlot(hObject, handles)
-%%% hasSleepStages = 0; % TODO 
 % set the epoch number
 % each epoch has been considered as 30 sec
 % get  current epoch length
@@ -789,7 +772,7 @@ if handles.hasAnnotation
     popup_id = get(handles.PopMenuWindowTime,'Value');
     epoch_width = handles.epoch_menu_values(popup_id);
     epoch_width = max(epoch_width, handles.minimum_cursor_width);
-    if handles.hasSleepStages %%% TODO
+    if handles.hasSleepStages 
         set(handles.LineSleepStage,...=
             'xData',[-1 -1 1 1 -1] * epoch_width / 2 + get(handles.SliderTime,'value') + epoch_width/2);
         set(handles.LineSleepStage,'FaceAlpha',0.5);
@@ -810,8 +793,7 @@ if handles.hasAnnotation
         % Index: event index that falls in the current slider time and 
         %        current slider time plus window time
         Index = find(Start>CurrentTime & Start < (CurrentTime+WindowTime));
-        Index = Index(Index~=1); % do not record 'Recording Start Time', a.k.a the first scored event
-%         forwardText;
+        Index = Index(Index~=1); % do not record 'Recording Start Time', a.k.a the first scored event        
         fprintf('Index<');
         for i=1:length(Index)
             fprintf('#%d: %s ',Index(i), handles.ScoredEvent(Index(i)).EventConcept);
@@ -870,9 +852,10 @@ if handles.hasAnnotation
                 eventType = lower(handles.ScoredEvent(Index(i)).EventType);
                 if ~isempty(ChNum) && isempty(strfind(eventType, 'sleep')) && isempty(strfind(eventType, 'stages'))...
                     && i <= length(ChNum)
+                        % TODO: draw green area...
                         forwardFill = fill([Start(i)  Temp Temp Start(i)], ...
                             [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 ]+2 ...
-                            ,[190 222 205]/255, 'FaceAlpha', 0.6);   %%% TODO: fill green area...
+                            ,[190 222 205]/255, 'FaceAlpha', 0.6);
                     
                         plot([Start(i)  Temp Temp Start(i) Start(i)], ...
                             [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 -ChNum(i)-3/2]+2 ...
@@ -897,16 +880,15 @@ if handles.hasAnnotation
         % find end index in current window
         IndexReverse = find((EndTime)>=CurrentTime & EndTime <= (CurrentTime+WindowTime));
         IndexReverse = [IndexReverse find(Start<=CurrentTime & EndTime >= (CurrentTime+WindowTime) )];
-%         IndexReverse = [IndexReverse find(Start<=CurrentTime & EndTime>=CurrentTime & EndTime <= (CurrentTime+WindowTime))];
+        % IndexReverse = [IndexReverse find(Start<=CurrentTime & EndTime>=CurrentTime & EndTime <= (CurrentTime+WindowTime))];
         IndexReverse = IndexReverse(IndexReverse~=1);
-%         reverseText;
         
         for i=1:length(Index)
             IndexReverse(IndexReverse==Index(i))=[];
         end
         
         Start = Start(IndexReverse)-CurrentTime;
-%         Start = Start(Start>=0);
+        % Start = Start(Start>=0);
         if ~isempty(IndexReverse)
             
             ChNum=[];
@@ -961,9 +943,10 @@ if handles.hasAnnotation
                 fprintf('i=%d eventName=%s\n', i, eventName);
                 if ~isempty(ChNum) && isempty(strfind(eventType, 'sleep')) && isempty(strfind(eventType, 'stages'))
                     if Temp > 0
+                        % Fill green bar under selected channel
                         reverseFill = fill([0  Temp Temp 0], ...
                             [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 ]+2 ...
-                            ,[190 222 205]/255, 'FaceAlpha', 0.6); %%% Fill green bar under selected channel
+                            ,[190 222 205]/255, 'FaceAlpha', 0.6); 
 
                         plot([0  Temp Temp 0 0], ...
                             [-ChNum(i)-3/2 -ChNum(i)-3/2 -ChNum(i)-1/2 -ChNum(i)-1/2 -ChNum(i)-3/2]+2 ...
@@ -1265,8 +1248,9 @@ function ListBoxComments_Callback(hObject, eventdata, handles)
 if handles.EDF_CHECK == 0 
     return
 end
-handles = guidata(hObject); %%%
+handles = guidata(hObject); 
 
+% DEBUG
 Sel = get(hObject,'value');
 fprintf('listbox size: %d\n', length(handles.eventIndexInCategory));
 SelNum = handles.eventIndexInCategory(Sel);
@@ -1275,8 +1259,8 @@ fprintf('Selected event number: SelNum# %d\n', SelNum);
 fprintf('Selected event name: %s\n', handles.ScoredEvent(SelNum).EventConcept);
 fprintf('handles.ScoredEvent size: # %d\n', length(handles.ScoredEvent));
 fprintf('Sleep Stages Number: # %d\n', length(handles.SleepStages));
-% Change tooltip
 
+% Change tooltip on selecting event
 set(handles.ListBoxComments, 'ToolTip', handles.ScoredEvent(SelNum).ToolTip);
 
 popMenuWindowTime_value = get(handles.PopMenuWindowTime, 'value');
@@ -1284,13 +1268,13 @@ ListOfPopMenuWindowTimes = get(handles.PopMenuWindowTime, 'string');
 CurrentPopMenuWindowTime = ListOfPopMenuWindowTimes{popMenuWindowTime_value};
 WindowTime = str2num(CurrentPopMenuWindowTime(1:end-3));
 
-% added check field(handles.ScoredEvent), Wei, 2014-11-09
+% added check field(handles.ScoredEvent), 2014-11-09
 % bug fixed: when select non-exist list of events after loading EDF file
 % and before loading annotation(XML) file
 if isfield(handles, 'ScoredEvent') % added check field(handles.ScoredEvent)
-    CurrentPopMenuWindowTime = WindowTime - handles.ScoredEvent(SelNum).Duration; % Sel has problems TODO%%%
+    CurrentPopMenuWindowTime = WindowTime - handles.ScoredEvent(SelNum).Duration;
 
-    if CurrentPopMenuWindowTime > 0 %%%[Original] has problems TODO
+    if CurrentPopMenuWindowTime > 0 
         Time = handles.ScoredEvent(SelNum).Start-CurrentPopMenuWindowTime/2;%
         if Time < 0
             Time = handles.ScoredEvent(SelNum).Start; % DEBUG
@@ -1304,7 +1288,7 @@ if isfield(handles, 'ScoredEvent') % added check field(handles.ScoredEvent)
     if Time>maxtime
         Time = maxtime;
     end
-%     set(handles.SliderTime,'value',fix(Time)); %[Original]
+    % set(handles.SliderTime,'value',fix(Time)); %[Original]
     set(handles.SliderTime,'value', Time);
     
     fprintf('Selected slider value: #: %d\n', get(handles.SliderTime, 'value'));
@@ -1314,7 +1298,7 @@ if isfield(handles, 'ScoredEvent') % added check field(handles.ScoredEvent)
 end
 
 % if get(handles.SliderTime, 'value') <= length(handles.SleepStages) - WindowTime
-    %%%TODO Fixed bug: updataPlot error issue(sliderTime value exceeds sleepstages length)
+    % Fixed bug: updataPlot error issue(sliderTime value exceeds sleepstages length)
     handles=DataLoad(handles);
     guidata(hObject,handles);
     handles = UpDatePlot(hObject,handles);
@@ -1448,9 +1432,7 @@ handles = guidata(hObject);
 if handles.EDF_CHECK == 0
     return
 else
-    % should clean last open file cache, wei wang, Jan, 15, 2015
-    %handles.hasSleepStages = 0;    
-    %handles.eventIndexInCategory = [];
+    % should clean last open file cache, Jan, 2015
     clearOpenCache;
     set(handles.pmAnnotations, 'string', ''); 
     set(handles.ListBoxComments, 'string', '');
@@ -1473,7 +1455,6 @@ end
 if FileNameAnn == 0 & FilePath == 0
     return
 end
-%%% structure to be considered
 
 try 
     annObj = loadPSGAnnotationClass([FilePath, FileNameAnn]);    
@@ -1503,7 +1484,7 @@ try
           end
           errordlg(msg, 'XML Event Error', 'modal');
     end
-%     fprintf('Available event types: %s', annObj.availableEventTypes);
+    % fprintf('Available event types: %s', annObj.availableEventTypes);
     availableEventTypes = {'All'};
     for i=1:length(annObj.availableEventTypes)
         if ~isempty(annObj.availableEventTypes{i})
@@ -1513,7 +1494,7 @@ try
     disp(availableEventTypes);
     handles.availableEventTypes = availableEventTypes;
     guidata(hObject, handles);
-    set(handles.pmAnnotations, 'string', availableEventTypes);    % record and show event types(in array)
+    set(handles.pmAnnotations, 'string', availableEventTypes);
     
     % Display basic info:
     numScoredEvents = length(annObj.ScoredEvent);
@@ -2013,8 +1994,7 @@ if get(hObject,'value')
     set(handles.SliderTime,'position',extendedSliderPos);
 else
     % Maximize signal check box is off, show annotation widgets
-    set(handleArray, 'visible', 'on');
-    
+    set(handleArray, 'visible', 'on');    
     % Resize compionents to default view
     set(handles.axes1,'outerposition',handles.Axes1OrgPos);
     set(handles.SliderTime,'position',handles.SliderOrgPos);
@@ -2292,7 +2272,6 @@ function pmAnnotations_Callback(hObject, eventdata, handles)
 % set(hObject, 'String', {'Red', 'Green', 'White'});
 
 % display selected item:
-% set(hObject, 'Value', 1);
 set(handles.ListBoxComments, 'string', '');
 categories = handles.availableEventTypes;
 disp(categories);
@@ -2302,13 +2281,13 @@ if index_selected(1) == 1
     Temp = cell(1, length(handles.ScoredEvent) - 1);
     for i=2:length(handles.ScoredEvent)
        Temp1 = fix(handles.ScoredEvent(i).Start / 30) + 1;
-%        Temp{i - 1}= [num2str(Temp1) ' - ' datestr(handles.ScoredEvent(i).Start/86400,'HH:MM:SS - ') handles.ScoredEvent(i).EventConcept];
+       % Temp{i - 1}= [num2str(Temp1) ' - ' datestr(handles.ScoredEvent(i).Start/86400,'HH:MM:SS - ') handles.ScoredEvent(i).EventConcept];
        
        timestring = datestr(datenum(handles.FileInfo.StartTime, 'HH.MM.SS') + seconds(handles.ScoredEvent(i).Start), 'HH:MM:SS');
        Temp{i - 1}= [num2str(Temp1) ' - ' timestring ' - ' handles.ScoredEvent(i).EventConcept];
        handles.eventIndexInCategory(i - 1) = i;
     end
-%     set(handles.ListBoxComments, 'string', Temp);
+
 else
     fprintf('selected value: %d', index_selected);
     values_selected = {};
@@ -2320,18 +2299,12 @@ else
     disp('----------------------------------')
 
     Temp = {};
-%     handles.eventIndexInCategory(1) = 1;
+
     j = 1;
     for i=2:length(handles.ScoredEvent)
-        % if event is one of the selected values
-%         if i == 1 % first event 'Record Start Time'
-%             Temp1 = fix(handles.ScoredEvent(i).Start / 30) + 1;
-%             Temp{end+1}= [num2str(Temp1) ' - ' datestr(handles.ScoredEvent(i).Start/86400,'HH:MM:SS - ') handles.ScoredEvent(i).EventConcept]; %, 'EventNumber #', num2str(i)];
-%         end
         eventCategory = handles.ScoredEvent(i).EventType;
         if ismember(eventCategory, values_selected)
             Temp1 = fix(handles.ScoredEvent(i).Start / 30) + 1;
-%             Temp{end+1}= [num2str(Temp1) ' - ' datestr(handles.ScoredEvent(i).Start/86400,'HH:MM:SS - ') handles.ScoredEvent(i).EventConcept]; %, 'EventNumber #', num2str(i)];
             
             timestring = datestr(datenum(handles.FileInfo.StartTime, 'HH.MM.SS') + seconds(handles.ScoredEvent(i).Start), 'HH:MM:SS');
             Temp{end+1}= [num2str(Temp1) ' - ' timestring ' - ' handles.ScoredEvent(i).EventConcept];
@@ -2340,7 +2313,7 @@ else
         end
     end
 end
-fprintf('list box list size: %d\n', length(handles.eventIndexInCategory));
+% fprintf('list box list size: %d\n', length(handles.eventIndexInCategory));
     
 if ~isempty(Temp)
     set(handles.ListBoxComments, 'string', Temp, 'value', 1);
@@ -2365,10 +2338,10 @@ end
 
 % ========================= Helper Functions =====================================
 % ========================= By Wei Wang, 2015 ====================================
-function handles = clearOpenCache(handles) 
+function handles = clearOpenCache(handles)
+    % clear pmAnnotations list box
     handles.hasSleepStages = 0;    
     handles.eventIndexInCategory = [];
-    % clear pmAnnotations list box
     
 function handles = turnOffHistogram(handles)
 %Do not show histogram
@@ -2376,27 +2349,18 @@ function handles = turnOffHistogram(handles)
     axes(handles.axes2)
     % reset axes
     cla reset
-    % clear x/y tick labels
-%     set(gca,'xtick',[])
-%     set(gca,'xticklabel',[])
-%     set(gca, 'ytick', [])
-%     set(gca, 'yticklabel', [])
     hold off
 
 function handles = plotHistogram(hObject, handles)
-% plot histogram according to the configuration, refactored by wei, 2015-1-14
-% global hasSleepStages;
+% plot histogram according to the configuration, 2015-1-14
     axes(handles.axes2)
     cla
     hold off
     lightsOnNum = get(handles.SliderTime, 'max')- length(handles.SleepStages);
     Temp = handles.SleepStages;
     Temp = [Temp, zeros(1,lightsOnNum)+5];
-%     plot(handles.SleepStages, 'LineWidth', 1.5, 'color','k');
     plot(Temp, 'LineWidth', 1.5, 'color','k');
     hold on
-%     set(handles.axes2,'xTick',[0 length(handles.SleepStages)],...
-%                       'xlim',[0 length(handles.SleepStages)],...
       set(handles.axes2,'xTick',[0 get(handles.SliderTime, 'max')],...
                       'xlim',[0 get(handles.SliderTime, 'max')],...
                       'xticklabel','',...
@@ -2416,61 +2380,17 @@ function handles = plotHistogram(hObject, handles)
     
     handles.LineSleepStage =  fill(x,y,'r','EdgeColor', 'r','FaceAlpha',0.5);
     guidata(hObject, handles);
-    hold off
-    
-function [eventTypes, events, stages]=loadMappingFile(mappingFile)
-%loadMappingFile Load PSG annotation event mapping. To be deleted: in
-%loadPSGAnnotationClass
-%   Read from csv, and output list of eventTypes, events and stages
-events = [];
-stages = [];
-eventTypes = [];
-try
-   fid = fopen(mappingFile, 'r') ;
-   tline = fgetl(fid);
-   while ischar(tline)
-       % use two "%*s" because in some csv file, the fourth(last) column
-       % contains ',' which is the delimiter in csv file
-       line = textscan(tline, '%s %s %s %*s %*s', 'delimiter', ',', 'CollectOutput', false);       
-       eventType = line{1}{1};
-       eventConcept = line{3}{1};
-       if strcmp(eventType, 'EventType') == 0
-           eventTypes{end+1} = eventType;
-       end
-       if strcmp(eventType, 'EpochLength') == 0 & strcmp(eventType, 'EventType') == 0
-           events{end+1} = eventConcept;
-           if strcmp(eventType, 'Staging') == 1
-               stages{end+1} = eventConcept;
-           end
-       end
-       tline = fgetl(fid);
-   end
-
-   events = unique(events);
-   stages = unique(stages);
-   eventTypes = unique(eventTypes);
-   
-   fclose(fid);
-catch exception
-    disp(exception)
-    events = [];
-    stages = [];
-    eventTypes = [];
-end
+    hold off    
 
 function msg=showErrorMessages(errroList) 
-    % For EDF error handling
+    % EDF error handling
     errMap = containers.Map('KeyType', 'char', 'ValueType', 'char');
     for i=1:length(errroList)
         fields = parseLine(errroList{i});
-        %disp('===============================')
         if isKey(errMap, fields{1})
             errMap(fields{1}) = [errMap(fields{1}), '    ->', fields{2}, char(10)];
-            %disp(errMap(fields{1}));
         else 
-            %errMap(fields{1}) = [fields{1}, char(10), '    ->', fields{2}, char(10)];
             errMap(fields{1}) = [fields{1}, char(10), fields{2}, char(10)];
-            %disp(errMap(fields{1}));
         end
     end
     result = values(errMap);
@@ -2484,6 +2404,7 @@ function msg=showErrorMessages(errroList)
     end
 
 function output=parseLine(line)
+    % helper function for display error message
     output = {};
     message = strsplit(line, ',');
     msgSize = length(message);
