@@ -623,6 +623,7 @@ classdef BlockEdfLoadClass
                         loadedSignalMemory = header.num_data_records*...
                             sum(edfSignalSizes(signalIndexes));
                         A = zeros(loadedSignalMemory,1);
+                        
                         for r = 1:header.num_data_records
                             [a count] = fread(fid, edfRecordSize, 'int16');
                             A([1+sizeSignalLocs*(r-1):sizeSignalLocs*r]) = a(signalLocs);
@@ -653,7 +654,14 @@ classdef BlockEdfLoadClass
                 % Create raw signal cell array
                 signalCell = cell(1,num_signals);
                 signalLocPerRow = horzcat([0],cumsum(signalSamplesPerRecord));
+                
+                % show loading percentage
+                perc = 0;
+                h = waitbar(perc, 'Loading EDF ...');
+                len = num_signals;
                 for s = 1:num_signals
+                    perc = perc + 1;
+                    waitbar(perc/num_signals, h, sprintf('Loading EDF %.0f%%', (perc/len) * 100));
                     % Get signal location
                     signalRowWidth = signalSamplesPerRecord(s);
                     signalRowStart = signalLocPerRow(s)+1;
@@ -698,7 +706,9 @@ classdef BlockEdfLoadClass
                     
                     signalCell{s} = value*factor;
                 end
-
+                
+                waitbar(1, h, 'Loading EDF Done!');
+                close(h);
             end
             
             %------------------------------------ Reduce signal if required

@@ -314,7 +314,7 @@ try
     end
     fprintf('Checking passed.\n')
 catch exception
-    errMsg = sprintf('Could not load: %s\nFile cannot be read', [FilePath FileName]);
+    errMsg = sprintf('Could not load: %s\nFile cannot be read\nPossible error: Data incomplete.', [FilePath FileName]);
     errordlg(errMsg, 'Fatal Error', 'modal'); %%% TODO: Use errordlg(message, 'XML errors') instead    
     return;
 end
@@ -2218,7 +2218,7 @@ if ~isempty(handles.Data)
     DataMean = arrayfun(dmean, [1:numSignals])';
     DataRange = DataMax-DataMin;
     
-    % Compute scale for each signal, check for divide by zerp
+    % Compute scale for each signal, check for divide by zero
     index = find(DataRange~=0);
     scalingFactor = zeros(numSignals,1);
     if ~isempty(index)
